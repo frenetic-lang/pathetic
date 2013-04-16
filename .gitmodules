@@ -1,0 +1,3 @@
+[submodule "desmoines"]
+	path = desmoines
+	url = git@github.com:frenetic-lang/desmoines.git
