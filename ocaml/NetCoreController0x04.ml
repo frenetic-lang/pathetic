@@ -5,7 +5,7 @@ open List0
 open NetCoreEval
 open NetCoreEval0x04
 open NetCoreCompiler0x04
-open Packet
+open NetworkPacket
 open OpenFlowTypes
 open Types
 open WordInterface

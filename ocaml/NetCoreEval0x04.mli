@@ -1,7 +1,7 @@
 open Datatypes
 open List0
 open WordInterface
-open Packet
+open NetworkPacket
 open OpenFlowTypes
 open NetCoreEval
 

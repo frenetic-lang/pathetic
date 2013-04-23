@@ -4,9 +4,9 @@ open Printf
 open Cstruct
 open Cstruct.BE
 open OpenFlowTypes
-open Util
+open Misc
 open List
-open PacketParser
+open Packet_Parser
 
 exception Unparsable of string
 let sym_num = ref 0
@@ -1062,7 +1062,7 @@ module PacketIn = struct
     (* printf "len = %d\n" (Cstruct.len pkt_bits); *)
     let pkt = match Cstruct.len pkt_bits with
       | 0 -> None
-      | _ -> begin match PacketParser.parse_packet pkt_bits with 
+      | _ -> begin match Packet_Parser.parse_packet pkt_bits with 
         | Some pkt -> Some pkt 
         | None -> 
           raise (Unparsable (sprintf "malformed packet in packet_in")) end in
@@ -1258,7 +1258,7 @@ module PacketIn = struct
     | None ->
       raise (Unparsable (sprintf "bad reason in packet_in (%d)" reason_code)) in
   let pkt_bits = Cstruct.shift bits sizeof_ofp_packet_in in
-  let pkt = match PacketParser.parse_packet pkt_bits with 
+  let pkt = match Packet_Parser.parse_packet pkt_bits with 
     | Some pkt -> pkt 
     | None -> 
       raise (Unparsable (sprintf "malformed packet in packet_in")) in

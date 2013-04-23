@@ -1,5 +1,5 @@
 open Classifier
-open Packet
+open NetworkPacket
 open ControllerInterface0x04
 open Datatypes
 open List0

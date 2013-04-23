@@ -59,14 +59,14 @@ module OpenFlowPlatform = struct
       any controller state. *)
   let rec recv_from_switch_fd (sock : file_descr) : (xid * message) Lwt.t = 
     let ofhdr_str = String.create sizeof_ofp_header in
-    lwt b = Util.SafeSocket.recv sock ofhdr_str 0 sizeof_ofp_header in 
+    lwt b = Misc.SafeSocket.recv sock ofhdr_str 0 sizeof_ofp_header in 
     if not b then 
       raise_lwt UnknownSwitchDisconnected
     else  
       let bits = (Cstruct.of_string ofhdr_str) in
       let sizeof_body = (get_ofp_header_length bits) - sizeof_ofp_header in
       let body_str = String.create sizeof_body in
-      lwt b = Util.SafeSocket.recv sock body_str 0 sizeof_body in 
+      lwt b = Misc.SafeSocket.recv sock body_str 0 sizeof_body in 
       if not b then 
 	raise_lwt UnknownSwitchDisconnected
       else

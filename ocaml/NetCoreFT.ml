@@ -1,12 +1,13 @@
 open Wildcard
 open Pattern
-open Packet
+open NetworkPacket
 open ControllerInterface0x04
 open OpenFlowTypes
 open Platform0x04
 open NetCoreEval0x04
 open Printf
 
+module Lwt_channel = Misc_Lwt_channel
 module type HANDLERS = sig
 
   val get_packet_handler : 
@@ -189,8 +190,8 @@ let rec predicate_to_string pred = match pred with
   | NoPackets -> "None"
   | Switch sw -> Printf.sprintf "(Switch %Ld)" sw
   | InPort pt -> Printf.sprintf "(InPort %ld)" pt
-  | DlSrc add -> Printf.sprintf "(DlSrc %s)" (Util.string_of_mac add)
-  | DlDst add -> Printf.sprintf "(DlDst %s)" (Util.string_of_mac add)
+  | DlSrc add -> Printf.sprintf "(DlSrc %s)" (Misc.string_of_mac add)
+  | DlDst add -> Printf.sprintf "(DlDst %s)" (Misc.string_of_mac add)
   | DlVlan (Some vlan) -> Printf.sprintf "(DlVlan %d)" vlan
   | DlVlan None -> Printf.sprintf "(DlVlan NONE)"
   | DlVlanPcp vlanPcp -> Printf.sprintf "(DlVlanPcp %d)" vlanPcp

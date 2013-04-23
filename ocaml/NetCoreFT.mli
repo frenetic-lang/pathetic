@@ -1,5 +1,5 @@
 (** The NetCore policy language *)
-open Packet
+open NetworkPacket
 open OpenFlowTypes
 open Platform0x04
 
