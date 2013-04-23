@@ -2,7 +2,7 @@
 OCAMLBUILD = ocamlbuild -use-ocamlfind 
 
 all:
-	$(OCAMLBUILD) debug.otarget
+	$(OCAMLBUILD) main.otarget
 
 native:
 	$(OCAMLBUILD) native.otarget

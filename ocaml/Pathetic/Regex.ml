@@ -45,8 +45,8 @@ let rec collapse_star pol = match pol with
   | [] -> []
 
 let get_path topo s1 s2 = let path = shortest_path topo s1 s2 in
-			  let () = Printf.printf "[regex] get_path %Ld %Ld:\n" s1 s2 in
-			  let () =  List.iter (fun x -> Printf.printf "\t%Ld\n" x ) path in
+			  (* let () = Printf.printf "[regex] get_path %Ld %Ld:\n" s1 s2 in *)
+			  (* let () =  List.iter (fun x -> Printf.printf "\t%Ld\n" x ) path in *)
 			  List.map (fun x -> Hop x) path
 
 let get_path1 topo src dst = List.tl (get_path topo src dst)
@@ -105,8 +105,8 @@ let rec expand_path_with_match path topo = match install_hosts path topo with
      1) Second compilation phase that detects repeated nodes and tags packets inbetween such repeats
   *)
 
-let bad_hop_handler s1 s2 sw pt pk =
-  Printf.printf "Can not forward pkt from %Ld to %Ld\n" s1 s2
+let bad_hop_handler s1 s2 sw pt pk = ()
+  (* Printf.printf "Can not forward pkt from %Ld to %Ld\n" s1 s2 *)
  
 let rec compile_path1 pred path topo port = match path with
   | Hop s1 :: Hop s2 :: path -> 
@@ -117,15 +117,15 @@ let rec compile_path1 pred path topo port = match path with
       | None -> Pol (((And (pred, (And (InPort port,Switch s1))))), [GetPacket (bad_hop_handler s1 (Int64.of_int h))]))
   | _ -> Pol (pred, [])
 
-let compile_path pred path topo vid = match path with
+let compile_path pred path topo (vid : WordInterface.Word16.t)  = match path with
   | Host h1 :: Hop s :: [Host h2] -> (match (get_host_port topo h1, get_host_port topo h2) with
 	  (* assert s1 = s *)
       | (Some (s1,p1), Some (s2,p2)) -> Pol ((And (pred, (And (InPort p1,Switch s)))), [To (unmodified, p2)]))
   | Host h :: Hop s1 :: Hop s2 :: path -> (match get_host_port topo h with
-	  (* assert s1 = s *)
-	  | Some (s1,inport) -> let p1,p2 = get_ports topo s1 s2 in
-				let pol = Pol (And (pred, (And (InPort inport,Switch s1))), [To ({unmodified with NetCoreEval.modifyDlVlan=(Some (Some vid))}, p1)]) in
-				Par (pol, compile_path1 (And (DlVlan (Some vid), And (pred, DlVlanPcp 0))) (Hop s2 :: path) topo p2))
+      (* assert s1 = s *)
+      | Some (s1,inport) -> let p1,p2 = get_ports topo s1 s2 in
+			    let pol = Pol (And (pred, (And (InPort inport,Switch s1))), [To ({unmodified with NetCoreEval.modifyDlVlan=(Some (Some vid))}, p1)]) in
+			    Par (pol, compile_path1 (And (DlVlan (Some vid), And (pred, DlVlanPcp 0))) (Hop s2 :: path) topo p2))
 
 
 
