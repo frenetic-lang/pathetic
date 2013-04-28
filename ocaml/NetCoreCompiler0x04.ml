@@ -31,12 +31,12 @@ let apply_act a = function
 let rec compile_pol opt p sw =
   match p with
   | PoAtom (pr, act0) ->
-    Obj.magic opt __
+    opt
       (map (second (apply_act act0))
         (app (compile_pred (Obj.magic opt __) pr sw)
           ((Pattern.Pattern.all,false)::[])))
   | PoUnion (pol1, pol2) ->
-    Obj.magic opt __
+    opt
       (union app (compile_pol opt pol1 sw) (compile_pol opt pol2 sw))
 
 (** val strip_empty_rules : 'a1 coq_Classifier -> 'a1 coq_Classifier **)
@@ -51,16 +51,15 @@ let rec strip_empty_rules = function
 
 (** val no_opt : 'a1 coq_Classifier -> 'a1 coq_Classifier **)
 
-let no_opt x =
-  id x
+let no_opt x = id x
 
 (** val compile_no_opt : pol -> switchId -> act list coq_Classifier **)
 
 let compile_no_opt =
-  compile_pol (fun _ -> no_opt)
+  compile_pol no_opt
 
 (** val compile_opt : pol -> switchId -> act list coq_Classifier **)
 
 let compile_opt pol swid =
-  (compile_pol (fun _ x -> strip_empty_rules (elim_shadowed x)) pol swid, [])
+  (compile_pol (fun x -> strip_empty_rules (elim_shadowed x)) pol swid, [])
 
