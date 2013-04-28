@@ -122,7 +122,6 @@ let add_group groups gid acts =
   groups := (gid, FF, acts) :: !groups
 
 open NetCoreEval0x04
-module NCE = NetCoreEval
 
 let rec from n lst = match lst with
   | [] -> [] (* Throw error? *)
@@ -223,7 +222,7 @@ let compile_ft_dict_to_nc1 pred swPol sw modif =
   let groups = ref [] in
   (H.fold (fun k (inport,acts) acc -> 
     let gid = Gensym.next () in
-    let acts' = List.mapi (fun i pt -> [To ({modif with NCE.modifyDlVlanPcp=Some(k+i)},pt)]) acts in
+    let acts' = List.mapi (fun i pt -> [To ({modif with modifyDlVlanPcp=Some(k+i)},pt)]) acts in
     let () = add_group groups gid acts' in
     Par (Pol (And (pred, (And (DlVlanPcp k, And (InPort inport, Switch sw)))), [NetCoreFT.Group gid]), acc)) swPol (Pol(All, [])), groups)
 
@@ -231,7 +230,7 @@ let compile_ft_dict_to_nc pred polTbl src dst vid =
   let groupTbl = H.create 10 in
   (H.fold (fun sw swPol acc -> 
     let pred' = if sw = src then And (pred, DlVlan None) else And (pred, DlVlan (Some vid)) in
-    let modif = if sw = dst then {unmodified with NCE.modifyDlVlan = (Some None)} else unmodified in
+    let modif = if sw = dst then {unmodified with modifyDlVlan = (Some None)} else unmodified in
     let swPolNc, groups = compile_ft_dict_to_nc1 pred' swPol sw modif in
     H.add groupTbl sw !groups; Par (swPolNc, acc)) polTbl (Pol (All,[])),
    groupTbl)

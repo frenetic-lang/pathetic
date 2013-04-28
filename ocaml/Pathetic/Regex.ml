@@ -113,7 +113,7 @@ let rec compile_path1 pred path topo port = match path with
     let p1,p2 = get_ports topo s1 s2 in
     Par ((Pol ((And (pred, (And (InPort port,Switch s1)))), [To (unmodified, p1)])), ((compile_path1 pred ((Hop s2) :: path) topo p2)))
   | Hop s1 :: [Host h] -> (match get_host_port topo h with
-      | Some (_,p1) ->  Pol ((And (pred, (And (InPort port,Switch s1)))), [To ({unmodified with NetCoreEval.modifyDlVlan=(Some None)}, p1)])
+      | Some (_,p1) ->  Pol ((And (pred, (And (InPort port,Switch s1)))), [To ({unmodified with NetCoreEval0x04.modifyDlVlan=(Some None)}, p1)])
       | None -> Pol (((And (pred, (And (InPort port,Switch s1))))), [GetPacket (bad_hop_handler s1 (Int64.of_int h))]))
   | _ -> Pol (pred, [])
 
@@ -124,7 +124,7 @@ let compile_path pred path topo (vid : WordInterface.Word16.t)  = match path wit
   | Host h :: Hop s1 :: Hop s2 :: path -> (match get_host_port topo h with
       (* assert s1 = s *)
       | Some (s1,inport) -> let p1,p2 = get_ports topo s1 s2 in
-			    let pol = Pol (And (pred, (And (InPort inport,Switch s1))), [To ({unmodified with NetCoreEval.modifyDlVlan=(Some (Some vid))}, p1)]) in
+			    let pol = Pol (And (pred, (And (InPort inport,Switch s1))), [To ({unmodified with NetCoreEval0x04.modifyDlVlan=(Some (Some vid))}, p1)]) in
 			    Par (pol, compile_path1 (And (DlVlan (Some vid), And (pred, DlVlanPcp 0))) (Hop s2 :: path) topo p2))
 
 

@@ -27,7 +27,7 @@ type predicate =
   | TcpSrcPort of int (** 16-bits *)
   | TcpDstPort of int (** 16-bits *)
 
-type modification = NetCoreEval.modification
+type modification = NetCoreEval0x04.modification
 val modifyDlSrc : modification -> dlAddr option
 val modifyDlDst : modification -> dlAddr option
 val modifyDlVlan : modification -> dlVlan option option
@@ -55,7 +55,7 @@ type group_htbl = (OpenFlowTypes.switchId, (int32 * OpenFlowTypes.groupType * Ne
 
 val desugar_act : action -> NetCoreEval0x04.act
 
-val desugar_pred : predicate -> NetCoreEval.pred
+val desugar_pred : predicate -> NetCoreEval0x04.pred
 
 val desugar_pol : policy -> NetCoreEval0x04.pol
 

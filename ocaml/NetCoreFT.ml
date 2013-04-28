@@ -93,7 +93,7 @@ module MakeNetCoreMonad
     Lwt.bind (action init) (fun (result, _) -> Lwt.return result)
 end
 
-let drop_all_packets = NetCoreEval0x04.PoAtom (NetCoreEval.PrAll, [])
+let drop_all_packets = NetCoreEval0x04.PoAtom (NetCoreEval0x04.PrAll, [])
 
 type eventOrPolicy = 
   | Event of ControllerInterface0x04.event
@@ -153,19 +153,17 @@ type predicate =
   | TcpSrcPort of int (** 16-bits, implicitly IP *)
   | TcpDstPort of int (** 16-bits, implicitly IP *)
 
-type modification = NetCoreEval.modification
-let modifyTpDst = NetCoreEval.modifyTpDst
-let modifyTpSrc = NetCoreEval.modifyTpSrc
-let modifyNwTos = NetCoreEval.modifyNwTos
-let modifyNwDst = NetCoreEval.modifyNwDst
-let modifyNwSrc = NetCoreEval.modifyNwSrc
-let modifyDlVlanPcp = NetCoreEval.modifyDlVlanPcp
-let modifyDlVlan = NetCoreEval.modifyDlVlan
-let modifyDlDst = NetCoreEval.modifyDlDst
-let modifyDlSrc = NetCoreEval.modifyDlSrc
-let modification_rec = NetCoreEval.modification_rec
-let modification_rect = NetCoreEval.modification_rect
-let unmodified = NetCoreEval.unmodified
+type modification = NetCoreEval0x04.modification
+let modifyTpDst = NetCoreEval0x04.modifyTpDst
+let modifyTpSrc = NetCoreEval0x04.modifyTpSrc
+let modifyNwTos = NetCoreEval0x04.modifyNwTos
+let modifyNwDst = NetCoreEval0x04.modifyNwDst
+let modifyNwSrc = NetCoreEval0x04.modifyNwSrc
+let modifyDlVlanPcp = NetCoreEval0x04.modifyDlVlanPcp
+let modifyDlVlan = NetCoreEval0x04.modifyDlVlan
+let modifyDlDst = NetCoreEval0x04.modifyDlDst
+let modifyDlSrc = NetCoreEval0x04.modifyDlSrc
+let unmodified = NetCoreEval0x04.unmodified
 
 type action =
   | To of modification*portId
@@ -238,25 +236,25 @@ let dlVlanNone = { PID.ptrnDlSrc = WildcardAll; PID.ptrnDlDst = WildcardAll;
 
 let rec desugar_pred pred = match pred with
   | And (p1, p2) -> 
-    NetCoreEval.PrNot (NetCoreEval.PrOr (NetCoreEval.PrNot (desugar_pred p1), NetCoreEval.PrNot (desugar_pred p2)))
+    NetCoreEval0x04.PrNot (NetCoreEval0x04.PrOr (NetCoreEval0x04.PrNot (desugar_pred p1), NetCoreEval0x04.PrNot (desugar_pred p2)))
   | Or (p1, p2) ->
-    NetCoreEval.PrOr (desugar_pred p1, desugar_pred p2)
-  | Not p -> NetCoreEval.PrNot (desugar_pred p)
-  | All -> NetCoreEval.PrAll
-  | NoPackets -> NetCoreEval.PrNone
-  | Switch swId -> NetCoreEval.PrOnSwitch swId
-  | InPort pt -> NetCoreEval.PrHdr (Pattern.inPort (Int32.to_int pt))
-  | DlSrc n -> NetCoreEval.PrHdr (Pattern.dlSrc n)
-  | DlDst n -> NetCoreEval.PrHdr (Pattern.dlDst n)
-  | DlVlan _  -> NetCoreEval.PrAll
-  | DlVlanPcp _ -> NetCoreEval.PrAll
-  (* | DlVlan (Some vlan) -> NetCoreEval.PrHdr (Pattern.dlVlan vlan) *)
-  (* | DlVlan None -> NetCoreEval.PrHdr dlVlanNone *)
-  (* | DlVlanPcp vlanPcp -> NetCoreEval.PrHdr (Pattern.dlVlanPcp vlanPcp) *)
-  | SrcIP n -> NetCoreEval.PrHdr (Pattern.ipSrc n)
-  | DstIP n -> NetCoreEval.PrHdr (Pattern.ipDst n)
-  | TcpSrcPort n -> NetCoreEval.PrHdr (Pattern.tcpSrcPort n)
-  | TcpDstPort n -> NetCoreEval.PrHdr (Pattern.tcpDstPort n)
+    NetCoreEval0x04.PrOr (desugar_pred p1, desugar_pred p2)
+  | Not p -> NetCoreEval0x04.PrNot (desugar_pred p)
+  | All -> NetCoreEval0x04.PrAll
+  | NoPackets -> NetCoreEval0x04.PrNone
+  | Switch swId -> NetCoreEval0x04.PrOnSwitch swId
+  | InPort pt -> NetCoreEval0x04.PrHdr (Pattern.inPort (Int32.to_int pt))
+  | DlSrc n -> NetCoreEval0x04.PrHdr (Pattern.dlSrc n)
+  | DlDst n -> NetCoreEval0x04.PrHdr (Pattern.dlDst n)
+  | DlVlan _  -> NetCoreEval0x04.PrAll
+  | DlVlanPcp _ -> NetCoreEval0x04.PrAll
+  (* | DlVlan (Some vlan) -> NetCoreEval0x04.PrHdr (Pattern.dlVlan vlan) *)
+  (* | DlVlan None -> NetCoreEval0x04.PrHdr dlVlanNone *)
+  (* | DlVlanPcp vlanPcp -> NetCoreEval0x04.PrHdr (Pattern.dlVlanPcp vlanPcp) *)
+  | SrcIP n -> NetCoreEval0x04.PrHdr (Pattern.ipSrc n)
+  | DstIP n -> NetCoreEval0x04.PrHdr (Pattern.ipDst n)
+  | TcpSrcPort n -> NetCoreEval0x04.PrHdr (Pattern.tcpSrcPort n)
+  | TcpDstPort n -> NetCoreEval0x04.PrHdr (Pattern.tcpDstPort n)
 
 let rec desugar_pol1 pol pred = match pol with
   | Pol (pred', acts) -> 

@@ -3,23 +3,70 @@ open List0
 open NetworkPacket
 open OpenFlowTypes
 open WordInterface
-open NetCoreEval
 
 type id = int
 
-type modification = NetCoreEval.modification
-let modifyTpDst = NetCoreEval.modifyTpDst
-let modifyTpSrc = NetCoreEval.modifyTpSrc
-let modifyNwTos = NetCoreEval.modifyNwTos
-let modifyNwDst = NetCoreEval.modifyNwDst
-let modifyNwSrc = NetCoreEval.modifyNwSrc
-let modifyDlVlanPcp = NetCoreEval.modifyDlVlanPcp
-let modifyDlVlan = NetCoreEval.modifyDlVlan
-let modifyDlDst = NetCoreEval.modifyDlDst
-let modifyDlSrc = NetCoreEval.modifyDlSrc
-let modification_rec = NetCoreEval.modification_rec
-let modification_rect = NetCoreEval.modification_rect
-let unmodified = NetCoreEval.unmodified
+type modification = { modifyDlSrc : dlAddr option;
+                      modifyDlDst : dlAddr option;
+                      modifyDlVlan : dlVlan option option;
+                      modifyDlVlanPcp : dlVlanPcp option;
+                      modifyNwSrc : nwAddr option;
+                      modifyNwDst : nwAddr option;
+                      modifyNwTos : nwTos option;
+                      modifyTpSrc : tpPort option;
+                      modifyTpDst : tpPort option }
+
+(** val modifyDlSrc : modification -> dlAddr option **)
+
+let modifyDlSrc x = x.modifyDlSrc
+
+(** val modifyDlDst : modification -> dlAddr option **)
+
+let modifyDlDst x = x.modifyDlDst
+
+(** val modifyDlVlan : modification -> dlVlan option option **)
+
+let modifyDlVlan x = x.modifyDlVlan
+
+(** val modifyDlVlanPcp : modification -> dlVlanPcp option **)
+
+let modifyDlVlanPcp x = x.modifyDlVlanPcp
+
+(** val modifyNwSrc : modification -> nwAddr option **)
+
+let modifyNwSrc x = x.modifyNwSrc
+
+(** val modifyNwDst : modification -> nwAddr option **)
+
+let modifyNwDst x = x.modifyNwDst
+
+(** val modifyNwTos : modification -> nwTos option **)
+
+let modifyNwTos x = x.modifyNwTos
+
+(** val modifyTpSrc : modification -> tpPort option **)
+
+let modifyTpSrc x = x.modifyTpSrc
+
+(** val modifyTpDst : modification -> tpPort option **)
+
+let modifyTpDst x = x.modifyTpDst
+
+(** val unmodified : modification **)
+
+let unmodified =
+  { modifyDlSrc = None; modifyDlDst = None; modifyDlVlan = None;
+    modifyDlVlanPcp = None; modifyNwSrc = None; modifyNwDst = None;
+    modifyNwTos = None; modifyTpSrc = None; modifyTpDst = None }
+
+type pred =
+| PrHdr of Pattern.pattern
+| PrOnSwitch of switchId
+| PrOr of pred * pred
+| PrAnd of pred * pred
+| PrNot of pred
+| PrAll
+| PrNone
 
 type act =
 | Forward of modification * pseudoPort
@@ -37,23 +84,6 @@ type output =
 | OutAct of switchId * act list * packet * (bufferId, bytes) sum
 | OutGetPkt of id * switchId * portId * packet
 | OutNothing
-
-let pp_to_13pp pp = match pp with
-  | OpenFlow0x01Types.PhysicalPort p -> PhysicalPort (Int32.of_int p)
-  | OpenFlow0x01Types.InPort -> InPort
-  | OpenFlow0x01Types.Flood -> Flood
-  | OpenFlow0x01Types.AllPorts -> AllPorts
-  | OpenFlow0x01Types.Controller x -> Controller x
-
-let eval_to_eval13 act = match act with
-  | NetCoreEval.Forward (a,b) -> Forward (a,pp_to_13pp b)
-  | NetCoreEval.ActGetPkt a -> ActGetPkt a
-
-let rec convert_from_eval10 pol = match pol with 
-  | NetCoreEval.PoAtom (pred,acts) -> 
-    PoAtom (pred, List.map eval_to_eval13 acts)
-  | NetCoreEval.PoUnion(pol1,pol2) -> 
-    PoUnion(convert_from_eval10 pol1, convert_from_eval10 pol2)
 
 let maybe_modify newVal modifier pk =
   match newVal with
@@ -97,13 +127,26 @@ let rec strip_controller acts = match acts with
   | a :: acts -> a :: strip_controller acts
   | [] -> []
 
+(** val match_pred : pred -> switchId -> portId -> packet -> bool **)
+
+let rec match_pred pr sw pt pk =
+  match pr with
+  | PrHdr pat -> Pattern.Pattern.match_packet pt pk pat
+  | PrOnSwitch sw' -> if Word64.eq_dec sw sw' then true else false
+  | PrOr (p1, p2) -> (||) (match_pred p1 sw pt pk) (match_pred p2 sw pt pk)
+  | PrAnd (p1, p2) -> (&&) (match_pred p1 sw pt pk) (match_pred p2 sw pt pk)
+  | PrNot p' -> negb (match_pred p' sw pt pk)
+  | PrAll -> true
+  | PrNone -> false
+
+
 let eval_action inp = function
 | Forward (mods, pp) ->
   let InPkt (sw, p, pk, buf) = inp in
   OutAct (sw, [Forward (mods, pp)], pk,
 	  (match buf with
 	    | Some b -> Coq_inl b
-	    | None -> Coq_inr (serialize_pkt pk)))
+	    | None -> Coq_inr (Packet_Parser.serialize_packet pk)))
 | ActGetPkt x ->
   let InPkt (sw, pt, pk, buf) = inp in OutGetPkt (x, sw, pt, pk)
 

@@ -3,11 +3,26 @@ open List
 open Datatypes
 open Classifier
 open Types
-open NetCoreCompiler
 open NetCoreEval0x04
 
 type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
+
+let rec compile_pred opt pr sw =
+  match pr with
+  | PrHdr pat -> (pat, true) :: []
+  | PrOnSwitch sw' ->
+    if sw == sw' then (Pattern.Pattern.all, true) :: [] else []
+  | PrOr (pr1, pr2) ->
+    opt (union (||) (compile_pred opt pr1 sw) (compile_pred opt pr2 sw))
+  | PrAnd (pr1, pr2) ->
+    opt (inter (&&) (compile_pred opt pr1 sw) (compile_pred opt pr2 sw))
+  | PrNot pr' ->
+    opt
+      (map (second negb)
+        (app (compile_pred opt pr' sw) ((Pattern.Pattern.all, false) :: [])))
+  | PrAll -> (Pattern.Pattern.all, true) :: []
+  | PrNone -> []
 
 let apply_act a = function
 | true -> a
