@@ -1,5 +1,4 @@
 open Datatypes
-open List0
 open WordInterface
 open NetworkPacket
 open OpenFlowTypes

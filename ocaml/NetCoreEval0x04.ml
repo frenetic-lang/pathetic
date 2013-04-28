@@ -1,5 +1,4 @@
 open Datatypes
-open List0
 open NetworkPacket
 open OpenFlowTypes
 open WordInterface
@@ -158,5 +157,5 @@ let rec classify p inp =
   match p with
   | PoAtom (pr, actions) ->
     let InPkt (sw, pt, pk, buf) = inp in
-    if match_pred pr sw (Int32.to_int pt) pk then map (eval_action inp) actions else []
+    if match_pred pr sw (Int32.to_int pt) pk then List.map (eval_action inp) actions else []
   | PoUnion (p1, p2) -> app (classify p1 inp) (classify p2 inp)
