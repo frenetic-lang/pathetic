@@ -1,7 +1,6 @@
 open Datatypes
 open NetworkPacket
 open OpenFlowTypes
-open WordInterface
 
 type id = int
 
@@ -131,7 +130,7 @@ let rec strip_controller acts = match acts with
 let rec match_pred pr sw pt pk =
   match pr with
   | PrHdr pat -> Pattern.Pattern.match_packet pt pk pat
-  | PrOnSwitch sw' -> if Word64.eq_dec sw sw' then true else false
+  | PrOnSwitch sw' -> if sw == sw' then true else false
   | PrOr (p1, p2) -> (||) (match_pred p1 sw pt pk) (match_pred p2 sw pt pk)
   | PrAnd (p1, p2) -> (&&) (match_pred p1 sw pt pk) (match_pred p2 sw pt pk)
   | PrNot p' -> negb (match_pred p' sw pt pk)
