@@ -1,10 +1,10 @@
 all:
-	cd coq && $(MAKE)
+	cd desmoines && $(MAKE)
 	cd ocaml && $(MAKE)
 
 test:
 	cd ocaml && $(MAKE) test
 
 clean:
-	cd coq && $(MAKE) clean
+	cd desmoines && $(MAKE) clean
 	cd ocaml && $(MAKE) clean
