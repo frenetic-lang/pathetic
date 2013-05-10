@@ -49,6 +49,7 @@ type policy =
   | Pol of predicate * action list
   | Par of policy * policy (** parallel composition *)
   | Restrict of policy * predicate
+  | LPar of policy * policy (** parallel composition *)
 
 val policy_to_string : policy -> string
 type group_htbl = (OpenFlowTypes.switchId, (int32 * OpenFlowTypes.groupType * NetCoreEval0x04.act list list) list) Hashtbl.t

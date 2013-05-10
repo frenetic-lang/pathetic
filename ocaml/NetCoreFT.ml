@@ -175,6 +175,7 @@ type policy =
   | Pol of predicate * action list
   | Par of policy * policy (** parallel composition *)
   | Restrict of policy * predicate
+  | LPar of policy * policy
 
 let next_id : int ref = ref 0
 
