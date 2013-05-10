@@ -42,6 +42,7 @@ type act =
 type pol =
 | PoAtom of pred * act list
 | PoUnion of pol * pol
+| PoOpt of pred * act list
 
 type input =
 | InPkt of switchId * portId * packet * bufferId option

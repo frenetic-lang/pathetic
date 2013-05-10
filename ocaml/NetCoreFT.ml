@@ -15,13 +15,11 @@ module type HANDLERS = sig
 
 end
 
-type group_htbl = (OpenFlowTypes.switchId, (int32 * OpenFlowTypes.groupType * NetCoreEval0x04.act list list) list) Hashtbl.t
-
 module MakeNetCoreMonad
   (Platform : PLATFORM) 
   (Handlers : HANDLERS) = struct
 
-  type state = { policy : pol*group_htbl; switches : switchId list }
+  type state = { policy : pol; switches : switchId list }
 
   let policy x = x.policy
     
@@ -97,7 +95,7 @@ let drop_all_packets = NetCoreEval0x04.PoAtom (NetCoreEval0x04.PrAll, [])
 
 type eventOrPolicy = 
   | Event of ControllerInterface0x04.event
-  | Policy of (NetCoreEval0x04.pol*group_htbl)
+  | Policy of NetCoreEval0x04.pol
 
 module MakeDynamic
   (Platform : PLATFORM)
@@ -110,7 +108,7 @@ module MakeDynamic
 
   let start_controller policy_stream =
     let init_state = { 
-      NetCoreMonad.policy = (drop_all_packets, Hashtbl.create 0); 
+      NetCoreMonad.policy = drop_all_packets; 
       NetCoreMonad.switches = []
     } in
     let policy_stream = Lwt_stream.map (fun v -> Policy v) policy_stream in
@@ -168,14 +166,13 @@ let unmodified = NetCoreEval0x04.unmodified
 type action =
   | To of modification*portId
   | ToAll of modification
-  | Group of groupId
   | GetPacket of get_packet_handler
 
 type policy =
   | Pol of predicate * action list
   | Par of policy * policy (** parallel composition *)
   | Restrict of policy * predicate
-  | LPar of policy * policy
+  | LPar of predicate * action list
 
 let next_id : int ref = ref 0
 
@@ -207,7 +204,6 @@ let rec predicate_to_string pred = match pred with
 let action_to_string act = match act with
   | To (modify,pt) -> Printf.sprintf "To %ld" pt
   | ToAll _ -> "ToAll"
-  | Group gid -> Printf.sprintf "Group %ld" gid
   | GetPacket _ -> "GetPacket"
 
 let rec policy_to_string pol = match pol with
@@ -218,7 +214,6 @@ let rec policy_to_string pol = match pol with
 let desugar_act act = match act with
   | To (modify, pt) -> Forward (modify, PhysicalPort pt)
   | ToAll modify -> Forward (modify, AllPorts)
-  | Group gid -> NetCoreEval0x04.Group gid
   | GetPacket handler ->
     let id = !next_id in
     incr next_id;
@@ -261,9 +256,11 @@ let rec desugar_pol1 pol pred = match pol with
   | Pol (pred', acts) -> 
     PoAtom (desugar_pred (And (pred', pred)), List.map desugar_act acts)
   | Par (pol1, pol2) ->
-    PoUnion (desugar_pol1 pol1 pred, desugar_pol1 pol2 pred)
+    PoUnion(desugar_pol1 pol1 pred,desugar_pol1 pol2 pred)
   | Restrict (p1, pr1) ->
     desugar_pol1 p1 (And (pred, pr1))
+  | LPar (pred', acts) -> 
+    PoOpt(desugar_pred (And (pred', pred)), List.map desugar_act acts)
 
 let rec desugar_pol pol = desugar_pol1 pol All
 
@@ -282,13 +279,13 @@ module Make (Platform : PLATFORM) = struct
     Hashtbl.clear get_pkt_handlers;
     next_id := 0
 
-  let start_controller (pol : (policy*group_htbl) Lwt_stream.t) : unit Lwt.t = 
+  let start_controller (pol : policy Lwt_stream.t) : unit Lwt.t = 
     Controller.start_controller
       (Lwt_stream.map 
-         (fun (pol1,group_tbl) -> 
+         (fun pol1 -> 
             printf "[NetCore.ml] got a new policy%!\n";
             clear_handlers (); 
-            (desugar_pol pol1, group_tbl))
+            desugar_pol pol1)
          pol)
 
 end

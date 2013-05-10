@@ -74,6 +74,7 @@ type act =
 type pol =
 | PoAtom of pred * act list
 | PoUnion of pol * pol
+| PoOpt of pred * act list
 
 type input =
 | InPkt of switchId * portId * packet * bufferId option
@@ -158,3 +159,7 @@ let rec classify p inp =
     let InPkt (sw, pt, pk, buf) = inp in
     if match_pred pr sw (Int32.to_int pt) pk then List.map (eval_action inp) actions else []
   | PoUnion (p1, p2) -> app (classify p1 inp) (classify p2 inp)
+  | PoOpt (pr, actions) ->
+    let InPkt (sw, pt, pk, buf) = inp in
+    if match_pred pr sw (Int32.to_int pt) pk then [(eval_action inp (List.hd actions))] else []
+

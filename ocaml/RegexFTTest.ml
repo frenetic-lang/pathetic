@@ -1,9 +1,9 @@
-open OpenFlow0x04Types
+open OpenFlowTypes
 open WordInterface
 open Platform0x04
 open FaultTolerance
 open NetCoreFT
-open Regex
+open Pathetic.Regex
 
 module G = Graph.Graph
 
@@ -56,12 +56,9 @@ module Routing = struct
   let group_htbl_to_str ghtbl =
     String.concat "" (H.fold (fun sw groups acc -> (Printf.sprintf "%Ld -> [\n%s]\n" sw (groups_to_string groups)):: acc) ghtbl [])
 
-  let () = let pol,groups = compile_ft_to_nc make_policy (D.make_topo ()) in
-	   let dgroups = desugar_group_htbl groups in
+  let () = let pol = compile_ft_to_nc make_policy (D.make_topo ()) in
 	   Printf.printf "%s\n" (policy_to_string pol);
-	   Printf.printf "groups: %s\n" (group_htbl_to_str groups);
-	   Printf.printf "dgroups: %s\n" (group_htbl_to_str dgroups);
-	   push (Some (pol, dgroups))
+	   push (Some pol)
 end
 
 module Make (Platform : PLATFORM) = struct

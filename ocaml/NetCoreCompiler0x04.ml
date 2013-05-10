@@ -28,16 +28,36 @@ let apply_act a = function
 | true -> a
 | false -> []
 
+module Gen =
+struct
+  let g = ref (Int32.of_int 0)
+  let next_val () = let v = !g in
+		 g := Int32.succ !g;
+		 v
+end
+
 let rec compile_pol opt p sw =
   match p with
   | PoAtom (pr, act0) ->
-    opt
-      (map (second (apply_act act0))
-        (app (compile_pred (Obj.magic opt __) pr sw)
-          ((Pattern.Pattern.all,false)::[])))
+    (opt
+       (map (second (apply_act act0))
+          (app (compile_pred (Obj.magic opt __) pr sw)
+             ((Pattern.Pattern.all,false)::[]))),
+     [])
   | PoUnion (pol1, pol2) ->
-    opt
-      (union app (compile_pol opt pol1 sw) (compile_pol opt pol2 sw))
+    let p1,g1 = compile_pol opt pol1 sw in
+    let p2,g2 = compile_pol opt pol2 sw in
+    (opt
+       (union app p1 p2),
+     List.append g1 g2)
+  | PoOpt (pr, act0) ->
+    let gid = Gen.next_val () in
+    (opt
+       (map (second (apply_act [Group gid]))
+          (app (compile_pred (Obj.magic opt __) pr sw)
+             ((Pattern.Pattern.all,false)::[]))),
+     [(gid, OpenFlowTypes.FF, List.map (fun x -> [x]) act0)])
+
 
 (** val strip_empty_rules : 'a1 coq_Classifier -> 'a1 coq_Classifier **)
 

@@ -42,17 +42,15 @@ val unmodified : modification
 type action =
   | To of modification*portId (** [To mods n] sends matching packets to port [n]. *)
   | ToAll of modification (** Send matching packets out of all ports. *)
-  | Group of groupId
   | GetPacket of get_packet_handler
 
 type policy =
   | Pol of predicate * action list
   | Par of policy * policy (** parallel composition *)
   | Restrict of policy * predicate
-  | LPar of policy * policy (** parallel composition *)
+  | LPar of predicate * action list
 
 val policy_to_string : policy -> string
-type group_htbl = (OpenFlowTypes.switchId, (int32 * OpenFlowTypes.groupType * NetCoreEval0x04.act list list) list) Hashtbl.t
 
 val desugar_act : action -> NetCoreEval0x04.act
 
@@ -61,6 +59,6 @@ val desugar_pred : predicate -> NetCoreEval0x04.pred
 val desugar_pol : policy -> NetCoreEval0x04.pol
 
 module Make : functor (Platform : PLATFORM) -> sig
-  val start_controller : (policy*group_htbl) Lwt_stream.t -> unit Lwt.t
+  val start_controller : policy Lwt_stream.t -> unit Lwt.t
 end
 

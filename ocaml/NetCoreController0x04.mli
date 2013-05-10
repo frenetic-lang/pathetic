@@ -33,8 +33,6 @@ val group_mods_of_classifier : (groupId*groupType*(act list list)) list -> group
 
 val delete_all_flows : tableId -> flowMod 
 
-type group_htbl = (OpenFlowTypes.switchId, (int32 * OpenFlowTypes.groupType * NetCoreEval0x04.act list list) list) Hashtbl.t
-
 module type NETCORE_MONAD = 
  sig 
   type 'x m 
@@ -43,9 +41,9 @@ module type NETCORE_MONAD =
   
   val ret : 'a1 -> 'a1 m
 
-  type state = { policy : pol*group_htbl; switches : switchId list }
+  type state = { policy : pol; switches : switchId list }
 
-  val policy : state -> pol*group_htbl
+  val policy : state -> pol
 
   val switches : state -> switchId list
   
@@ -67,9 +65,9 @@ module Make :
  sig 
   val sequence : unit Monad.m list -> unit Monad.m
   
-  val config_commands : pol*group_htbl -> switchId -> tableId -> unit Monad.m
+  val config_commands : pol -> switchId -> tableId -> unit Monad.m
   
-  val set_policy : pol*group_htbl -> unit Monad.m
+  val set_policy : pol -> unit Monad.m
   
   val handle_switch_disconnected : switchId -> unit Monad.m
   

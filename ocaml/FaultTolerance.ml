@@ -215,15 +215,16 @@ end
 
 let next_hop_from_k_tree pr sw tree topo tag = match tree with
   | KLeaf host -> (match G.get_host_port topo host with
-      | Some (s1,p1) -> assert (s1 = sw); Pol(And( Switch sw, And(pr, match_tag tag)), [To(strip_tag tag, p1)]))
+      | Some (s1,p1) -> assert (s1 = sw); To(strip_tag tag, p1))
   | KTree (sw', _) -> (match G.get_ports topo sw sw' with
-      | (p1,p2) -> Pol(And( Switch sw, And(pr, match_tag tag)), [To(stamp_tag tag, p1)]))
+      | (p1,p2) -> To(stamp_tag tag, p1))
 
 let rec policy_from_k_tree pr sw tree topo tag gensym = match tree with
   | KLeaf h -> (match G.get_host_port topo h with
       | Some (s1,p1) -> assert (s1 = sw); Pol(And( Switch sw, And(pr, match_tag tag)), [To(strip_tag tag, p1)]))
   | KTree(sw', children) -> 
-    let backup = List.fold_left (fun a b -> LPar(a, next_hop_from_k_tree pr sw' b topo (Gen.next_val gensym))) trivial_pol children in
+    let backup = LPar(And( Switch sw, And(pr, match_tag tag)), 
+		      List.map (fun b -> next_hop_from_k_tree pr sw' b topo (Gen.next_val gensym)) children) in
     let children_pols = List.fold_left (fun a b -> Par(a, policy_from_k_tree pr sw b topo (Gen.next_val gensym) gensym)) trivial_pol children in
     Par(backup, children_pols)
 
