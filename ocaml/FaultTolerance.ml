@@ -171,69 +171,71 @@ module Dag =
    k = number of current active policy (0 = primary, 1 = secondary, etc)
 *)
 
-let sw_pol_to_string swPol = 
-  String.concat "" (H.fold (fun k (inport, ports) acc -> (Printf.sprintf "\t%d -> (%ld, [%s])\n" k inport (String.concat ";\n" (List.map (Printf.sprintf "\t\t%ld") ports ))):: acc) swPol [])
+let pr_from_tag k fail_set = NoPackets
 
-let dag_pol_to_string pol =
-  String.concat "" (H.fold (fun sw swPol acc -> (Printf.sprintf "%Ld -> \n%s\n" sw (sw_pol_to_string swPol)):: acc) pol [])
+let expand_regex_with_match_bad_links regex sw topo bad_links = expand_regex_with_match regex sw topo
 
-let rec dag_to_policy dag pol root inport pred k =
-  (* Printf.printf "Entering dag_to_policy %s %s %Ld %ld\n"  *)
-  (*   (Dag.dag_to_string dag)  *)
-  (*   (dag_pol_to_string pol) *)
-  (*   root *)
-  (*   inport; *)
-  let sw_pol = (try H.find pol root with 
-      Not_found -> let foo = H.create 5 in H.add pol root foo; foo) in
-  let children = from k (Dag.next_hops dag root) in
-  let () = H.add sw_pol k (inport, children) in
-  (* FIXME: Too coarse. Should just skip over elements causing exception *)
-  let next_hops = try List.map (Dag.next_hop dag root) children with _ -> [] in
-  List.iteri (fun idx (sw, port) -> dag_to_policy dag pol sw port pred (k - idx)) next_hops
+let rec range k n = if k = n then [] else k :: range (k+1) n
 
-let del_link topo sw sw' =
-  let () = Printf.printf "Deleting link between %Ld and %Ld\n" sw sw' in
-  let p1,p2 = G.get_ports topo sw sw' in
-  G.del_edge topo sw p1;
-  G.del_edge topo sw' p2
+let trivial_pol = Pol(NoPackets, [])
+type k_tree = 
+  | KLeaf of int
+  | KTree of switchId * (k_tree list)
 
-let rec k_dag_from_path path n k topo dag = match path with
-  | (Hop sw, _) :: [(Host h1,_)] -> (match G.get_host_port topo h1 with
-      | Some (s1,p1) -> assert (s1 = sw); Dag.install_host_link dag sw p1 k)
-  | (Hop sw, a) :: (Hop sw', b) :: path -> 
-    Dag.install_link dag topo sw sw' k;
-    k_dag_from_path ((Hop sw',b) :: path) n k (G.copy topo) dag;
-    del_link topo sw sw';
-    for i = k + 1 to n do
-      let path = expand_regex_with_match (snd (List.split path)) sw topo in
-      k_dag_from_path path n i (G.copy topo) dag;
-      let new_sw' = (match (List.hd (List.tl (fst (List.split path)))) with
-	| Hop sw' -> sw) in
-      del_link topo sw new_sw'
-    done
+(* Initial version: no backtracking *)
+let rec build_k_children sw path n k fail_set topo =
+  if k = n then Some [] 
+  else
+    let path = expand_regex_with_match_bad_links (snd (List.split path)) sw topo fail_set in
+    let new_sw' = (match (List.hd (List.tl (fst (List.split path)))) with 
+      | Hop sw' -> sw) in
+    match build_k_tree_from_path path n k fail_set topo with
+      | None -> None
+      | Some tree -> (match build_k_children sw path n (k + 1) ((sw, new_sw') :: fail_set) topo with
+	  | None -> None
+	  | Some children -> Some (tree :: children))
+and
+    build_k_tree_from_path path n k fail_set topo = match path with
+      | (Hop sw, _) :: [(Host h1,_)] -> Some (KLeaf h1)
+      | (Hop sw, a) :: (Hop sw', b) :: path -> 
+	(match build_k_children sw path n k fail_set topo with
+	  | None -> None
+	  | Some children -> Some (KTree(sw, children)))
 
-let rec build_dag n topo regex = 
-  let dag = Dag.create() in
+exception NoTree of string
+
+let build_k_tree n regex topo = 
   let path = expand_path_with_match regex topo in
-  k_dag_from_path path n 0 (G.copy topo) dag;
-  dag
+  match build_k_tree_from_path path n 0 [] topo with
+    | None -> raise (NoTree "failed to build k-tree")
+    | Some tree -> tree
 
-let compile_ft_dict_to_nc1 pred swPol sw modif = 
-  let groups = ref [] in
-  (H.fold (fun k (inport,acts) acc -> 
-    let gid = Gensym.next () in
-    let acts' = List.mapi (fun i pt -> [To ({modif with modifyDlVlanPcp=Some(k+i)},pt)]) acts in
-    let () = add_group groups gid acts' in
-    Par (Pol (And (pred, (And (DlVlanPcp k, And (InPort inport, Switch sw)))), [NetCoreFT.Group gid]), acc)) swPol (Pol(All, [])), groups)
+let strip_tag tag = unmodified
+let stamp_tag tag = unmodified
+let match_tag tag = NoPackets
 
-let compile_ft_dict_to_nc pred polTbl src dst vid = 
-  let groupTbl = H.create 10 in
-  (H.fold (fun sw swPol acc -> 
-    let pred' = if sw = src then And (pred, DlVlan None) else And (pred, DlVlan (Some vid)) in
-    let modif = if sw = dst then {unmodified with modifyDlVlan = (Some None)} else unmodified in
-    let swPolNc, groups = compile_ft_dict_to_nc1 pred' swPol sw modif in
-    H.add groupTbl sw !groups; Par (swPolNc, acc)) polTbl (Pol (All,[])),
-   groupTbl)
+module Gen =
+struct
+  type t = Int32.t
+  let create () = ref (Int32.of_int 0)
+  let next_val g = let v = !g in
+		   g := Int32.succ !g;
+		   v
+end
+
+let next_hop_from_k_tree pr sw tree topo tag = match tree with
+  | KLeaf host -> (match G.get_host_port topo host with
+      | Some (s1,p1) -> assert (s1 = sw); Pol(And( Switch sw, And(pr, match_tag tag)), [To(strip_tag tag, p1)]))
+  | KTree (sw', _) -> (match G.get_ports topo sw sw' with
+      | (p1,p2) -> Pol(And( Switch sw, And(pr, match_tag tag)), [To(stamp_tag tag, p1)]))
+
+let rec policy_from_k_tree pr sw tree topo tag gensym = match tree with
+  | KLeaf h -> (match G.get_host_port topo h with
+      | Some (s1,p1) -> assert (s1 = sw); Pol(And( Switch sw, And(pr, match_tag tag)), [To(strip_tag tag, p1)]))
+  | KTree(sw', children) -> 
+    let backup = List.fold_left (fun a b -> LPar(a, next_hop_from_k_tree pr sw' b topo (Gen.next_val gensym))) trivial_pol children in
+    let children_pols = List.fold_left (fun a b -> Par(a, policy_from_k_tree pr sw b topo (Gen.next_val gensym) gensym)) trivial_pol children in
+    Par(backup, children_pols)
 
 let first = List.hd
 let rec last lst = 
@@ -245,36 +247,27 @@ let rec compile_ft_regex pred vid regex k topo =
   let Host srcHost = first regex in
   let Host dstHost = last regex in
   let host_expanded_regex = install_hosts regex topo in
+  let ktree = build_k_tree k regex topo in
   let srcSw,srcPort = (match G.get_host_port topo srcHost with Some (sw,p) -> (sw,p)) in
   let dstSw,dstPort = (match G.get_host_port topo dstHost with Some (sw,p) -> (sw,p)) in
-  let dag = build_dag k topo regex in
-  let () = Printf.printf "DAG: %s" (Dag.dag_to_string dag) in
-  let dag_pol = H.create 10 in
-  let () = dag_to_policy dag dag_pol srcSw srcPort pred k in
-  let () = Printf.printf "DAG Policy: %s\n" (dag_pol_to_string dag_pol) in
-  compile_ft_dict_to_nc pred dag_pol srcSw dstSw vid
-    
-let join_htbls h1 h2 op =
-  let newHtbl = H.create (H.length h1) in
-  let keys = (H.fold (fun a b acc -> a :: acc) h1 []) @ (H.fold (fun a b acc -> a :: acc) h2 []) in
-  List.iter (fun a -> (match (H.mem h1 a, H.mem h2 a) with 
-    | true,true -> H.replace newHtbl a (op (H.find h1 a) (H.find h2 a))
-    | false,true -> H.replace newHtbl a (H.find h2 a)
-    | true,false -> H.replace newHtbl a (H.find h1 a)
-    | false,false -> () (* Impossible *))) keys;
-  newHtbl
-  
-let group_htbl_to_str ghtbl =
-    String.concat "" (H.fold (fun sw groups acc -> (Printf.sprintf "%Ld -> [\n%s]\n" sw (groups_to_string groups)):: acc) ghtbl [])
+  let genSym = Gen.create() in
+  policy_from_k_tree (And(pred, DlVlan (Some vid))) srcSw ktree topo (Gen.next_val genSym) genSym
 
+(* let rec compile_ft_regex pred vid regex k topo =  *)
+(*   let Host srcHost = first regex in *)
+(*   let Host dstHost = last regex in *)
+(*   let host_expanded_regex = install_hosts regex topo in *)
+(*   let srcSw,srcPort = (match G.get_host_port topo srcHost with Some (sw,p) -> (sw,p)) in *)
+(*   let dstSw,dstPort = (match G.get_host_port topo dstHost with Some (sw,p) -> (sw,p)) in *)
+(*   let dag = build_dag k topo regex in *)
+(*   let () = Printf.printf "DAG: %s" (Dag.dag_to_string dag) in *)
+(*   let dag_pol = H.create 10 in *)
+(*   let () = dag_to_policy dag dag_pol srcSw srcPort pred k in *)
+(*   let () = Printf.printf "DAG Policy: %s\n" (dag_pol_to_string dag_pol) in *)
+(*   compile_ft_dict_to_nc pred dag_pol srcSw dstSw vid *)
+    
 let rec compile_ft_to_nc regpol topo =
   match regpol with
-    | RegUnion (p1,p2) -> let nc1,group1 = compile_ft_to_nc p1 topo in
-			      Printf.printf "Group1: %s" (group_htbl_to_str group1);
-			      let nc2, group2 = compile_ft_to_nc p2 topo in
-			      Printf.printf "Group2: %s" (group_htbl_to_str group2);
-			      let groups = join_htbls group1 group2 List.append in
-			      Printf.printf "Groups: %s" (group_htbl_to_str groups);
-			      (Par (nc1, nc2), groups)
+    | RegUnion (p1,p2) -> Par(compile_ft_to_nc p1 topo, compile_ft_to_nc p2 topo)
     | RegPol (pred, path, k) -> let vid = Int32.to_int (Gensym.next ()) in
 				      compile_ft_regex pred vid (flatten_reg path) k topo
