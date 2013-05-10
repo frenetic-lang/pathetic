@@ -163,16 +163,6 @@ module Dag =
     let dag_to_string (d,_) = String.concat "" (H.fold (fun sw intTbl acc -> (Printf.sprintf "\t%Ld -> \n%s\n" sw (intTbl_to_string intTbl)):: acc) d [])
   end
 
-(* Given an ordered k-resilient DAG, convert it into a k-resilient forwarding policy *)
-(* pol = { sw |-> {n |-> (port, [port])} } *)
-
-(* dag = rooted dag. 
-   n = maximum resilience
-   k = number of current active policy (0 = primary, 1 = secondary, etc)
-*)
-
-let pr_from_tag k fail_set = NoPackets
-
 let expand_regex_with_match_bad_links regex sw topo bad_links = expand_regex_with_match regex sw topo
 
 let rec range k n = if k = n then [] else k :: range (k+1) n
@@ -253,18 +243,6 @@ let rec compile_ft_regex pred vid regex k topo =
   let genSym = Gen.create() in
   policy_from_k_tree (And(pred, DlVlan (Some vid))) srcSw ktree topo (Gen.next_val genSym) genSym
 
-(* let rec compile_ft_regex pred vid regex k topo =  *)
-(*   let Host srcHost = first regex in *)
-(*   let Host dstHost = last regex in *)
-(*   let host_expanded_regex = install_hosts regex topo in *)
-(*   let srcSw,srcPort = (match G.get_host_port topo srcHost with Some (sw,p) -> (sw,p)) in *)
-(*   let dstSw,dstPort = (match G.get_host_port topo dstHost with Some (sw,p) -> (sw,p)) in *)
-(*   let dag = build_dag k topo regex in *)
-(*   let () = Printf.printf "DAG: %s" (Dag.dag_to_string dag) in *)
-(*   let dag_pol = H.create 10 in *)
-(*   let () = dag_to_policy dag dag_pol srcSw srcPort pred k in *)
-(*   let () = Printf.printf "DAG Policy: %s\n" (dag_pol_to_string dag_pol) in *)
-(*   compile_ft_dict_to_nc pred dag_pol srcSw dstSw vid *)
     
 let rec compile_ft_to_nc regpol topo =
   match regpol with
