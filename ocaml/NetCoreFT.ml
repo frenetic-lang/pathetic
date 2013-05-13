@@ -75,7 +75,7 @@ module MakeNetCoreMonad
   let rec accept_switch_thread () = 
     Lwt.bind (Platform.accept_switch ())
       (fun feats -> 
-        printf "[NetCore.ml] SwitchConnected event queued\n%!";
+        printf "[NetCoreFT.ml] SwitchConnected event queued\n%!";
         Lwt.bind (Lwt_channel.send (SwitchConnected feats.datapath_id) events)
           (fun () ->
             Lwt.async 
@@ -120,10 +120,10 @@ module MakeDynamic
       Lwt.bind (Lwt_stream.next event_or_policy_stream)
         (fun v -> match v with
           | Event ev -> 
-            printf "[NetCore.ml] new event, calling handler\n%!";
+            printf "[NetCoreFT.ml] new event, calling handler\n%!";
             Controller.handle_event ev state
           | Policy pol ->
-            printf "[NetCore.ml] new policy\n%!";
+            printf "[NetCoreFT.ml] new policy\n%!";
             Controller.set_policy pol state) in
     let main = NetCoreMonad.forever body in
     NetCoreMonad.run init_state main
@@ -269,7 +269,7 @@ module Make (Platform : PLATFORM) = struct
   module Handlers : HANDLERS = struct
       
     let get_packet_handler queryId switchId portId packet = 
-      printf "[NetCore.ml] Got packet from %Ld\n" switchId;
+      printf "[NetCoreFT.ml] Got packet from %Ld\n" switchId;
         (Hashtbl.find get_pkt_handlers queryId) switchId portId packet
   end
           
@@ -283,7 +283,7 @@ module Make (Platform : PLATFORM) = struct
     Controller.start_controller
       (Lwt_stream.map 
          (fun pol1 -> 
-            printf "[NetCore.ml] got a new policy%!\n";
+            printf "[NetCoreFT.ml] got a new policy%!\n";
             clear_handlers (); 
             desugar_pol pol1)
          pol)

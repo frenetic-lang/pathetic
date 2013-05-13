@@ -5,7 +5,6 @@ open Classifier
 open Types
 open NetCoreEval0x04
 
-type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
 
 let rec compile_pred opt pr sw =
@@ -22,7 +21,7 @@ let rec compile_pred opt pr sw =
       (map (second negb)
         (app (compile_pred opt pr' sw) ((Pattern.Pattern.all, false) :: [])))
   | PrAll -> (Pattern.Pattern.all, true) :: []
-  | PrNone -> []
+  | PrNone -> [(Pattern.Pattern.all, false)]
 
 let apply_act a = function
 | true -> a
@@ -31,22 +30,24 @@ let apply_act a = function
 module Gen =
 struct
   let g = ref (Int32.of_int 0)
-  let next_val () = let v = !g in
-		 g := Int32.succ !g;
-		 v
+  let next_val () =     
+    let v = !g in
+    g := Int32.succ !g;
+    v
 end
 
-let rec compile_pol opt p sw =
+let rec compile_pol opt popt p sw =
   match p with
   | PoAtom (pr, act0) ->
+    let pred' = (compile_pred popt pr sw) in
     (opt
        (map (second (apply_act act0))
-          (app (compile_pred (Obj.magic opt __) pr sw)
-             ((Pattern.Pattern.all,false)::[]))),
+          ( pred' @
+              [(Pattern.Pattern.all,false)])),
      [])
   | PoUnion (pol1, pol2) ->
-    let p1,g1 = compile_pol opt pol1 sw in
-    let p2,g2 = compile_pol opt pol2 sw in
+    let p1,g1 = compile_pol opt popt pol1 sw in
+    let p2,g2 = compile_pol opt popt pol2 sw in
     (opt
        (union app p1 p2),
      List.append g1 g2)
@@ -54,7 +55,7 @@ let rec compile_pol opt p sw =
     let gid = Gen.next_val () in
     (opt
        (map (second (apply_act [Group gid]))
-          (app (compile_pred (Obj.magic opt __) pr sw)
+          (app (compile_pred popt pr sw)
              ((Pattern.Pattern.all,false)::[]))),
      [(gid, OpenFlowTypes.FF, List.map (fun x -> [x]) act0)])
 
@@ -81,5 +82,5 @@ let compile_no_opt =
 (** val compile_opt : pol -> switchId -> act list coq_Classifier **)
 
 let compile_opt pol swid =
-  (compile_pol (fun x -> strip_empty_rules (elim_shadowed x)) pol swid, [])
+  compile_pol (fun x -> strip_empty_rules (elim_shadowed x)) (fun x -> strip_empty_rules (elim_shadowed x)) pol swid
 

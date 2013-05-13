@@ -226,8 +226,7 @@ module Make =
     String.concat "" (Hashtbl.fold (fun sw groups acc -> (Printf.sprintf "%Ld -> [\n%s]\n" sw (groups_to_string groups)):: acc) ghtbl [])
   
   let config_commands (pol0 :pol) swId tblId =
-    let pol = pol0 in
-    let fm_cls, gm_cls = fst (nc_compiler pol swId) in
+    let fm_cls, gm_cls = nc_compiler pol0 swId in
     sequence
       ((map (fun fm -> Monad.send swId Word32.zero (GroupModMsg fm))
 	  (delete_all_groups :: (group_mods_of_classifier gm_cls))) @
@@ -288,9 +287,14 @@ module Make =
   (** val handle_event : event -> unit Monad.m **)
   
   let handle_event = function
-  | SwitchConnected swId -> handle_switch_connected swId
-  | SwitchDisconnected swId -> handle_switch_disconnected swId
+  | SwitchConnected swId -> 
+    Printf.printf "[NetCoreController0x04.ml] SwitchConnected %Ld\n%!" swId;
+    handle_switch_connected swId
+  | SwitchDisconnected swId -> 
+    Printf.printf "[NetCoreController0x04.ml] SwitchDisconnected %Ld\n%!" swId;
+    handle_switch_disconnected swId
   | SwitchMessage (swId, xid0, msg) ->
+    Printf.printf "[NetCoreController0x04.ml] SwitchMessage event %Ld\n%!" swId;
     (match msg with
      | PacketInMsg pktIn -> handle_packet_in swId pktIn
      | _ -> Monad.ret ())

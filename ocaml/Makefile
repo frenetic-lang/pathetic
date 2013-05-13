@@ -4,6 +4,9 @@ OCAMLBUILD = ocamlbuild -use-ocamlfind
 all:
 	$(OCAMLBUILD) main.otarget
 
+debug:
+	$(OCAMLBUILD) debug.otarget
+
 native:
 	$(OCAMLBUILD) native.otarget
 

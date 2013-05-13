@@ -3,7 +3,8 @@ open OpenFlow0x04Parser
 open Platform0x04
 open Unix
 open OpenFlowTypes
-module Test = RegexFTTest
+(* module Test = RegexFTTest *)
+module Test = RegexTest
 
 (* module Controller = RegexTest.Make (OpenFlowPlatform) *)
 module Controller = Test.Make (OpenFlowPlatform)

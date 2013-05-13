@@ -167,7 +167,7 @@ class Diamond(Topo):
         self.addLink("s1", "s3")
         self.addLink("s2", "s4")
         self.addLink("s3", "s4")
-        self.addLink("s2", "h2")
+        self.addLink("s4", "h2")
                          
 topos = { 
   'wattsstrogatz': ( WattsStrogatzTopology ),
