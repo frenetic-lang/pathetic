@@ -41,7 +41,7 @@ module Routing = struct
       mac-learning. *)      
   let () = let pol = (compile_regex test_regex (DiamondTopo.make_topo ())) in
 	   Printf.printf "%s\n" (policy_to_string pol);
-	   push (Some (pol, Hashtbl.create 0))
+	   push (Some pol)
 end
 
 module Make (Platform : PLATFORM) = struct
