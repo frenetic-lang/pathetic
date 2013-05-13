@@ -1,4 +1,5 @@
-from mininet.topo import Topo, Node
+from mininet.node import Node
+from mininet.topo import Topo
 import random
 import networkx as nx
 import math
@@ -148,8 +149,29 @@ class WaxmanTopology(Topo):
         # assert(False)
         self.enable_all()
 
+class Diamond(Topo):
+
+    def __init__(self):
+
+        super(Diamond, self).__init__()
+
+        self.addSwitch("s1")
+        self.addSwitch("s2")
+        self.addSwitch("s3")
+        self.addSwitch("s4")
+        self.addHost("h1")
+        self.addHost("h2")
+
+        self.addLink("h1", "s1")
+        self.addLink("s1", "s2")
+        self.addLink("s1", "s3")
+        self.addLink("s2", "s4")
+        self.addLink("s3", "s4")
+        self.addLink("s2", "h2")
+                         
 topos = { 
   'wattsstrogatz': ( WattsStrogatzTopology ),
   'fattree': ( FattreeTopology ),
-  'waxman': ( WaxmanTopology )
+  'waxman': ( WaxmanTopology ),
+  'diamond': (Diamond)
 }
