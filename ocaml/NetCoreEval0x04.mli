@@ -44,6 +44,9 @@ type pol =
 | PoUnion of pol * pol
 | PoOpt of pred * act list
 
+val pol_to_string : pol -> string
+val cls_to_string : (Pattern.pattern * (act list)) list -> string
+
 type input =
 | InPkt of switchId * portId * packet * bufferId option
 

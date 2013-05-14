@@ -231,8 +231,11 @@ let dlVlanNone = { PID.ptrnDlSrc = WildcardAll; PID.ptrnDlDst = WildcardAll;
       WildcardAll }
 
 let rec desugar_pred pred = match pred with
+    (* Minor optimizations *)
+  | And (All, p2) -> desugar_pred p2
+  | And (p1, All) -> desugar_pred p1
   | And (p1, p2) -> 
-    NetCoreEval0x04.PrNot (NetCoreEval0x04.PrOr (NetCoreEval0x04.PrNot (desugar_pred p1), NetCoreEval0x04.PrNot (desugar_pred p2)))
+    NetCoreEval0x04.PrAnd (desugar_pred p1, desugar_pred p2)
   | Or (p1, p2) ->
     NetCoreEval0x04.PrOr (desugar_pred p1, desugar_pred p2)
   | Not p -> NetCoreEval0x04.PrNot (desugar_pred p)

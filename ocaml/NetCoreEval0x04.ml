@@ -84,6 +84,54 @@ type output =
 | OutGetPkt of id * switchId * portId * packet
 | OutNothing
 
+let wildcard64_to_string str wc = match wc with
+  | Wildcard.WildcardAll -> ""
+  | Wildcard.WildcardExact x -> Printf.sprintf "%s %Ld" str x
+
+let wildcard_to_string str wc = match wc with
+  | Wildcard.WildcardAll -> ""
+  | Wildcard.WildcardExact x -> Printf.sprintf "%s %d" str x
+
+let pat_to_string pat = 
+  Printf.sprintf "{ %s; %s; %s; %s; %s; %s }" 
+    (wildcard64_to_string "ptrnDlSrc = " pat.PatternImplDef.ptrnDlSrc) 
+    (wildcard64_to_string "ptrnDlDst = " pat.PatternImplDef.ptrnDlDst) 
+    (wildcard_to_string "ptrnDlType = " pat.PatternImplDef.ptrnDlType) 
+    (wildcard_to_string "ptrnDlVlan = " pat.PatternImplDef.ptrnDlVlan) 
+    (wildcard_to_string "ptrnDlVlanPcp = " pat.PatternImplDef.ptrnDlVlanPcp) 
+    (wildcard_to_string "ptrnInPort = " pat.PatternImplDef.ptrnInPort)
+
+let rec pred_to_string pred = match pred with
+  | PrAnd (p1,p2) -> Printf.sprintf "(PrAnd %s %s)" (pred_to_string p1) (pred_to_string p2)
+  | PrOr (p1,p2) -> Printf.sprintf "(PrOr %s %s)" (pred_to_string p1) (pred_to_string p2)
+  | PrNot p1 -> Printf.sprintf "(PrNot %s)" (pred_to_string p1)
+  | PrNone -> "PrNone"
+  | PrOnSwitch sw -> Printf.sprintf "(PrOnSwitch %Ld)" sw
+  | PrAll -> "PrAll"
+  | PrHdr p1 -> Printf.sprintf "(PrHdr %s)" (pat_to_string p1)
+
+let pp_to_string pp = match pp with
+  | PhysicalPort pid -> Printf.sprintf "%ld" pid
+  | InPort -> "InPort"
+  | Flood -> "Flood"
+  | AllPorts -> "AllPorts"
+  | Controller _ -> "Controller"
+  | Any -> "Any"
+
+let act_to_string act = match act with
+  | Forward (modify,pt) -> Printf.sprintf "To %s" (pp_to_string pt)
+  | Group gid -> Printf.sprintf "Group %ld" gid
+  | ActGetPkt _ -> "AcGetPkt"
+
+let rec pol_to_string pol = match pol with
+  | PoAtom (pred,acts) -> Printf.sprintf "(%s => [%s])" (pred_to_string pred) (String.concat ";" (List.map act_to_string acts))
+  | PoUnion (p1,p2) -> Printf.sprintf "(PoUnion %s %s)" (pol_to_string p1) (pol_to_string p2)
+  | PoOpt (pred,acts) -> Printf.sprintf "(%s |=> [%s])" (pred_to_string pred) (String.concat ";" (List.map act_to_string acts))
+
+let cls_to_string cls = 
+  Printf.sprintf "\n[ \n%s ]" (List.fold_right (fun (p,acts) a -> Printf.sprintf "\t(%s, %s)\n%s" 
+    (pat_to_string p) (String.concat ";" (List.map act_to_string acts)) a) cls "")
+
 let maybe_modify newVal modifier pk =
   match newVal with
   | Some v -> modifier pk v

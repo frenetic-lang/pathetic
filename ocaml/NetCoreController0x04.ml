@@ -226,7 +226,9 @@ module Make =
     String.concat "" (Hashtbl.fold (fun sw groups acc -> (Printf.sprintf "%Ld -> [\n%s]\n" sw (groups_to_string groups)):: acc) ghtbl [])
   
   let config_commands (pol0 :pol) swId tblId =
+    Printf.printf "[NetCoreController0x04.ml] config_commands %Ld %s\n%!" swId (pol_to_string pol0);
     let fm_cls, gm_cls = nc_compiler pol0 swId in
+    Printf.printf "[NetCoreController0x04.ml] installing ft of size %d %s\n%!" (List.length fm_cls) (cls_to_string fm_cls);
     sequence
       ((map (fun fm -> Monad.send swId Word32.zero (GroupModMsg fm))
 	  (delete_all_groups :: (group_mods_of_classifier gm_cls))) @
