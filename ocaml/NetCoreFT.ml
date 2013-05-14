@@ -246,11 +246,11 @@ let rec desugar_pred pred = match pred with
   | InPort pt -> NetCoreEval0x04.PrHdr (Pattern.inPort (Int32.to_int pt))
   | DlSrc n -> NetCoreEval0x04.PrHdr (Pattern.dlSrc n)
   | DlDst n -> NetCoreEval0x04.PrHdr (Pattern.dlDst n)
-  | DlVlan _  -> NetCoreEval0x04.PrAll
-  | DlVlanPcp _ -> NetCoreEval0x04.PrAll
-  (* | DlVlan (Some vlan) -> NetCoreEval0x04.PrHdr (Pattern.dlVlan vlan) *)
-  (* | DlVlan None -> NetCoreEval0x04.PrHdr dlVlanNone *)
-  (* | DlVlanPcp vlanPcp -> NetCoreEval0x04.PrHdr (Pattern.dlVlanPcp vlanPcp) *)
+  (* | DlVlan _  -> NetCoreEval0x04.PrAll *)
+  (* | DlVlanPcp _ -> NetCoreEval0x04.PrAll *)
+  | DlVlan (Some vlan) -> NetCoreEval0x04.PrHdr (Pattern.dlVlan vlan)
+  | DlVlan None -> NetCoreEval0x04.PrHdr dlVlanNone
+  | DlVlanPcp vlanPcp -> NetCoreEval0x04.PrHdr (Pattern.dlVlanPcp vlanPcp)
   | SrcIP n -> NetCoreEval0x04.PrHdr (Pattern.ipSrc n)
   | DstIP n -> NetCoreEval0x04.PrHdr (Pattern.ipDst n)
   | TcpSrcPort n -> NetCoreEval0x04.PrHdr (Pattern.tcpSrcPort n)
