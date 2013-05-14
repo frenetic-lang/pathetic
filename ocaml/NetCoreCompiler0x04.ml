@@ -55,7 +55,7 @@ let rec compile_pol opt popt p sw =
     (opt
        (map (second (apply_act [Group gid]))
           (List.append (compile_pred popt pr sw)
-             ((Pattern.Pattern.all,false)::[]))),
+             [(Pattern.Pattern.all,false)])),
      [(gid, OpenFlowTypes.FF, List.map (fun x -> [x]) act0)])
 
 
