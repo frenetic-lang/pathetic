@@ -51,13 +51,13 @@ let rec compile_pol opt popt p sw =
     (opt
        (union List.append p1 p2),
      List.append g1 g2)
-  (* | PoOpt (pr, act0) -> *)
-  (*   let gid = Gen.next_val () in *)
-  (*   (opt *)
-  (*      (map (second (apply_act [Group gid])) *)
-  (*         (List.append (compile_pred popt pr sw) *)
-  (*            ((Pattern.Pattern.all,false)::[]))), *)
-  (*    [(gid, OpenFlowTypes.FF, List.map (fun x -> [x]) act0)]) *)
+  | PoOpt (pr, act0) ->
+    let gid = Gen.next_val () in
+    (opt
+       (map (second (apply_act [Group gid]))
+          (List.append (compile_pred popt pr sw)
+             ((Pattern.Pattern.all,false)::[]))),
+     [(gid, OpenFlowTypes.FF, List.map (fun x -> [x]) act0)])
 
 
 (** val strip_empty_rules : 'a1 coq_Classifier -> 'a1 coq_Classifier **)
