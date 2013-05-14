@@ -163,7 +163,7 @@ module Dag =
     let dag_to_string (d,_) = String.concat "" (H.fold (fun sw intTbl acc -> (Printf.sprintf "\t%Ld -> \n%s\n" sw (intTbl_to_string intTbl)):: acc) d [])
   end
 
-let expand_regex_with_match_bad_links regex sw topo bad_links = expand_regex_with_match regex sw topo
+let expand_regex_with_match_bad_links regex sw topo bad_links = expand_path_with_match1 regex sw topo
 
 let rec range k n = if k = n then [] else k :: range (k+1) n
 
@@ -172,25 +172,36 @@ type k_tree =
   | KLeaf of int
   | KTree of switchId * (k_tree list)
 
+let rec k_tree_to_string tree = match tree with
+  | KLeaf h -> Printf.sprintf "KLeaf %d" h
+  | KTree(sw, children) -> Printf.sprintf "KTree(%Ld, [ %s ])" sw (String.concat "; " (List.map k_tree_to_string children))
+
+let clear_path path = List.map (fun a -> (a,a)) (Pathetic.Regex.collapse_star (List.map snd path))
+
 (* Initial version: no backtracking *)
 let rec build_k_children sw path n k fail_set topo =
-  if k = n then Some [] 
+  if k > n then Some [] 
   else
-    let path = expand_regex_with_match_bad_links (snd (List.split path)) sw topo fail_set in
-    let new_sw' = (match (List.hd (List.tl (fst (List.split path)))) with 
-      | Hop sw' -> sw) in
-    match build_k_tree_from_path path n k fail_set topo with
-      | None -> None
-      | Some tree -> (match build_k_children sw path n (k + 1) ((sw, new_sw') :: fail_set) topo with
+    let path = expand_regex_with_match_bad_links path sw topo fail_set in
+    match (List.hd (fst (List.split path))) with
+      | Host h -> Some [KLeaf h]
+      | Hop new_sw' -> 
+	(match build_k_tree_from_path path n k fail_set topo with
 	  | None -> None
-	  | Some children -> Some (tree :: children))
+	  | Some tree -> (match build_k_children sw path n (k + 1) ((sw, new_sw') :: fail_set) topo with
+	      | None -> None
+	      | Some children -> Some (tree :: children)))
 and
-    build_k_tree_from_path path n k fail_set topo = match path with
-      | (Hop sw, _) :: [(Host h1,_)] -> Some (KLeaf h1)
+    build_k_tree_from_path path n k fail_set topo = 
+      Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s\n%!" (String.concat ";" (List.map (fun (a,b) -> 
+      Printf.sprintf "(%s, %s)" (regex_to_string a) (regex_to_string b)) path));
+    match path with
+      | (Hop sw, _) :: [(Host h1,_)] -> Some (KTree(sw, [KLeaf h1]))
       | (Hop sw, a) :: (Hop sw', b) :: path -> 
-	(match build_k_children sw path n k fail_set topo with
+	(match build_k_children sw (clear_path ((b, b) :: path)) n k fail_set topo with
 	  | None -> None
 	  | Some children -> Some (KTree(sw, children)))
+      | (Host h, _) :: path -> build_k_tree_from_path path n k fail_set topo
 
 exception NoTree of string
 
@@ -213,20 +224,26 @@ struct
 		   v
 end
 
-let next_hop_from_k_tree pr sw tree topo tag = match tree with
+let next_hop_from_k_tree pr sw tree topo tag = 
+  Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree);
+  match tree with
   | KLeaf host -> (match G.get_host_port topo host with
-      | Some (s1,p1) -> assert (s1 = sw); To(strip_tag tag, p1))
+      | Some (s1,p1) -> 
+	Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %Ld %Ld\n%!" sw s1;
+	assert (s1 = sw); To(strip_tag tag, p1))
   | KTree (sw', _) -> (match G.get_ports topo sw sw' with
       | (p1,p2) -> To(stamp_tag tag, p1))
 
-let rec policy_from_k_tree pr sw tree topo tag gensym = match tree with
-  | KLeaf h -> (match G.get_host_port topo h with
-      | Some (s1,p1) -> assert (s1 = sw); Pol(And( Switch sw, And(pr, match_tag tag)), [To(strip_tag tag, p1)]))
-  | KTree(sw', children) -> 
-    let backup = LPar(And( Switch sw, And(pr, match_tag tag)), 
-		      List.map (fun b -> next_hop_from_k_tree pr sw' b topo (Gen.next_val gensym)) children) in
-    let children_pols = List.fold_left (fun a b -> Par(a, policy_from_k_tree pr sw b topo (Gen.next_val gensym) gensym)) trivial_pol children in
-    Par(backup, children_pols)
+let rec policy_from_k_tree pr sw tree topo tag gensym = 
+  Printf.printf "[FaulTolerance.ml] policy_from_k_tree %Ld %s\n%!" sw (k_tree_to_string tree);
+  match tree with
+    | KLeaf h -> (match G.get_host_port topo h with
+	| Some (s1,p1) -> assert (s1 = sw); Pol(And( Switch sw, And(pr, match_tag tag)), [To(strip_tag tag, p1)]))
+    | KTree(sw', children) -> 
+      let backup = LPar(And( Switch sw, And(pr, match_tag tag)), 
+			List.map (fun b -> next_hop_from_k_tree pr sw' b topo (Gen.next_val gensym)) children) in
+      let children_pols = List.fold_left (fun a b -> Par(a, policy_from_k_tree pr sw' b topo (Gen.next_val gensym) gensym)) trivial_pol children in
+      Par(backup, children_pols)
 
 let first = List.hd
 let rec last lst = 
@@ -237,7 +254,6 @@ let rec last lst =
 let rec compile_ft_regex pred vid regex k topo = 
   let Host srcHost = first regex in
   let Host dstHost = last regex in
-  let host_expanded_regex = install_hosts regex topo in
   let ktree = build_k_tree k regex topo in
   let srcSw,srcPort = (match G.get_host_port topo srcHost with Some (sw,p) -> (sw,p)) in
   let dstSw,dstPort = (match G.get_host_port topo dstHost with Some (sw,p) -> (sw,p)) in

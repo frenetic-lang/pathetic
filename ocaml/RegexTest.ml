@@ -33,9 +33,9 @@ module Routing = struct
 
   let (policy, push) = Lwt_stream.create ()
     
-  let test_regex = RegPol (All, (Host h1 <.> Hop s101 <.> Star <.> Hop s104 <.> Host h2), 0) 
+  let test_regex = RegPol (All, (Host h1 <.> Star <.> Host h2), 0) 
     <+>
-      RegPol (All, (Host h2 <.> Hop s104 <.> Star <.> Hop s101 <.> Host h1), 0)
+      RegPol (All, (Host h2 <.> Star <.> Host h1), 0)
 
   (** Composes learning and routing policies, which together form
       mac-learning. *)      

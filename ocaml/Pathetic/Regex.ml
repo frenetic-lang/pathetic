@@ -25,6 +25,19 @@ let (&&) a b = Intersection(a,b)
 let (||) a b = Union(a,b)
 let (<.>) a b = Sequence(a,b)
 
+let rec regex_to_string reg = match reg with
+  | Hop sw -> Printf.sprintf "(Hop %Ld)" sw
+  | Host h -> Printf.sprintf "(Host %d)" h
+  | Star -> "*"
+  | Sequence(reg1, reg2) -> Printf.sprintf "( %s <.> %s )" (regex_to_string reg1) (regex_to_string reg2)
+  | Union(reg1, reg2) -> Printf.sprintf "( %s <||> %s )" (regex_to_string reg1) (regex_to_string reg2)
+  | Intersection(reg1, reg2) -> Printf.sprintf "( %s <&&> %s )" (regex_to_string reg1) (regex_to_string reg2)
+
+let rec regexPol_to_string regPol = match regPol with
+  | RegPol(pr, reg, k) -> Printf.sprintf "RegPol(%s, %s, %d)" (predicate_to_string pr) (regex_to_string reg) k
+  | RegUnion(reg_pol1, reg_pol2) -> Printf.sprintf "(%s <+> %s)" (regexPol_to_string reg_pol1) (regexPol_to_string reg_pol2)
+  | RegInter(reg_pol1, reg_pol2) -> Printf.sprintf "(%s <*> %s)" (regexPol_to_string reg_pol1) (regexPol_to_string reg_pol2)
+
 (* Normalization algorithm:
    1) Push intersections till they're over atomic policies or other intersection (DNF)
    2) Eliminate intersections
@@ -84,14 +97,24 @@ let rec star_out_regex regex = match regex with
 let rec expand_path path topo = match fst (List.split (install_hosts path topo)) with
   | Host h1 :: Hop s1 :: path -> Host h1 :: Hop s1 :: expand_path1 path s1 topo
 
-let rec expand_regex_with_match regex hop topo = match regex with
+let rec expand_regex_with_match regex hop topo = 
+  Printf.printf "[Regex.ml] expand_path_with_match %s\n%!" (String.concat ";" (List.map regex_to_string regex));
+  match regex with
   | Star :: Hop s :: path -> star_out_regex (get_path1 topo hop s) @ expand_regex_with_match regex s topo
   | Hop s1 :: path -> (Hop s1, Hop s1) :: expand_regex_with_match path s1 topo
+  | [Host h1] -> [(Host h1, Host h1)]
 
 (* Expands a regex into an explicit path starting at hop, storing the "match expansion" along the way *)
-let rec expand_path_with_match1 path hop topo = match path with
+let rec expand_path_with_match1 path hop topo = 
+  Printf.printf "[Regex.ml] expand_path_with_match1 %Ld %s\n%!" hop (String.concat ";" (List.map (fun (a,b) -> 
+    Printf.sprintf "(%s, %s)" (regex_to_string a) (regex_to_string b)) path));
+  match path with
   | (Star,_) :: (Hop s, a) :: path -> (star_out_path (get_path1 topo hop s) a) @ expand_path_with_match1 path s topo
   | (Hop s1, a) :: path -> (Hop s1, a) :: expand_path_with_match1 path s1 topo
+  | (Star,_) :: [(Host h1, a)] -> (match get_host_port topo h1 with
+      | Some (s1,_) -> (star_out_path (get_path1 topo hop s1) Star) @  [(Host h1, a)])
+  | [(Host h1, a)] -> [(Host h1, a)]
+
 
 let rec expand_path_with_match path topo = match install_hosts path topo with
   | (Host h1, a) :: (Hop s1, b) :: path -> (Host h1, a) :: (Hop s1, b) :: expand_path_with_match1 path s1 topo
