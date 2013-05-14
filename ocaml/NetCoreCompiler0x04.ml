@@ -11,7 +11,6 @@ let rec compile_pred opt pr sw =
   match pr with
   | PrHdr pat -> [(pat, true)]
   | PrOnSwitch sw' ->
-    Printf.printf "[NetCoreCompiler0x04.ml] swid %Ld compile_pred (PrOnSwitch %Ld )\n%!" sw sw';    
     if sw = sw' then [(Pattern.Pattern.all, true)] else []
   | PrOr (pr1, pr2) ->
     opt (union (||) (compile_pred opt pr1 sw) (compile_pred opt pr2 sw))

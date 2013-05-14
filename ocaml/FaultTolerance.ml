@@ -213,7 +213,7 @@ let build_k_tree n regex topo =
 
 let strip_tag tag = unmodified
 let stamp_tag tag = unmodified
-let match_tag tag = NoPackets
+let match_tag tag = All
 
 module Gen =
 struct
@@ -234,6 +234,7 @@ let next_hop_from_k_tree pr sw tree topo tag =
   | KTree (sw', _) -> (match G.get_ports topo sw sw' with
       | (p1,p2) -> To(stamp_tag tag, p1))
 
+(* Need to add inport matching *)
 let rec policy_from_k_tree pr sw tree topo tag gensym = 
   Printf.printf "[FaulTolerance.ml] policy_from_k_tree %Ld %s\n%!" sw (k_tree_to_string tree);
   match tree with

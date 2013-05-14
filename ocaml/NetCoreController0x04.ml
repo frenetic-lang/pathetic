@@ -73,6 +73,7 @@ let translate_action in_port = function
            else Output (PhysicalPort pp)
          | None -> Output (PhysicalPort pp))::[])
    | _ -> app (modification_to_openflow0x01 mods) ((Output p)::[]))
+| NetCoreEval0x04.Group gid -> [Group gid]
 | ActGetPkt x -> (Output (Controller Word16.max_value))::[]
 
 (** val to_flow_mod : priority -> Pattern.pattern -> act list -> flowMod **)
