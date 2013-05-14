@@ -162,12 +162,13 @@ class Diamond(Topo):
         self.addHost("h1")
         self.addHost("h2")
 
-        self.addLink("h1", "s1")
-        self.addLink("s1", "s2")
-        self.addLink("s1", "s3")
-        self.addLink("s2", "s4")
-        self.addLink("s3", "s4")
-        self.addLink("s4", "h2")
+        self.addLink("h1", "s1", 1, 1)
+        self.addLink("s4", "h2", 1, 1)
+        self.addLink("s1", "s2", 2, 1)
+        self.addLink("s1", "s3", 3, 1)
+        self.addLink("s2", "s3", 2, 2)
+        self.addLink("s2", "s4", 3, 2)
+        self.addLink("s3", "s4", 3, 3)
                          
 topos = { 
   'wattsstrogatz': ( WattsStrogatzTopology ),
