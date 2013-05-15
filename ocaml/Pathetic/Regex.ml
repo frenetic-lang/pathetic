@@ -1,6 +1,7 @@
 open OpenFlow0x01Types
 open NetCoreFT
-open Graph.Graph
+
+module G = Graph.Graph
 
 (* type graph = (switchId * switchId * int) list *)
 
@@ -57,7 +58,7 @@ let rec collapse_star pol = match pol with
   | a :: pol -> a :: collapse_star pol
   | [] -> []
 
-let get_path topo s1 s2 = let path = shortest_path topo s1 s2 in
+let get_path topo s1 s2 = let path = G.shortest_path topo s1 s2 in
 			  (* let () = Printf.printf "[regex] get_path %Ld %Ld:\n" s1 s2 in *)
 			  (* let () =  List.iter (fun x -> Printf.printf "\t%Ld\n" x ) path in *)
 			  List.map (fun x -> Hop x) path
@@ -78,14 +79,14 @@ let rec star_out_path path last = match path with
 *)
 let rec install_hosts path topo = match path with
   | Host h1 :: Star :: [Host h2] -> 
-    (match (get_host_port topo h1, get_host_port topo h2) with
+    (match (G.get_host_port topo h1, G.get_host_port topo h2) with
       | (Some (s1,_), Some (s2,_)) -> if s1 = s2 then
 	  (Host h1, Host h1) :: (Hop s1, Star) :: [(Host h2, Host h2)]
 	else
 	  (Host h1, Host h1) :: (Hop s1, Star) :: (Star, Star) :: (Hop s2, Star) :: [(Host h2, Host h2)])
-  | Host h1 :: Star :: path -> (match get_host_port topo h1 with
+  | Host h1 :: Star :: path -> (match G.get_host_port topo h1 with
       | Some (s1,_) -> (Host h1, Host h1) :: (Hop s1, Star) ::  install_hosts (Star :: path) topo)
-  | Star :: [Host h1] -> (match get_host_port topo h1 with
+  | Star :: [Host h1] -> (match G.get_host_port topo h1 with
       | Some (s1,_) -> (Hop s1, Star) ::  [(Host h1, Host h1)])
   | h :: path -> (h, h) :: install_hosts path topo
   | [] -> []
@@ -111,9 +112,14 @@ let rec expand_path_with_match1 path hop topo =
   match path with
   | (Star,_) :: (Hop s, a) :: path -> (star_out_path (get_path1 topo hop s) a) @ expand_path_with_match1 path s topo
   | (Hop s1, a) :: path -> (Hop s1, a) :: expand_path_with_match1 path s1 topo
-  | (Star,_) :: [(Host h1, a)] -> (match get_host_port topo h1 with
+  | (Star,_) :: [(Host h1, a)] -> (match G.get_host_port topo h1 with
       | Some (s1,_) -> (star_out_path (get_path1 topo hop s1) Star) @  [(Host h1, a)])
   | [(Host h1, a)] -> [(Host h1, a)]
+
+let expand_path_with_match_bad_links regex sw topo bad_links =
+  let new_topo = G.copy topo in
+  G.del_links new_topo bad_links;
+  expand_path_with_match1 regex sw new_topo
 
 
 let rec expand_path_with_match path topo = match install_hosts path topo with
@@ -133,20 +139,20 @@ let bad_hop_handler s1 s2 sw pt pk = ()
  
 let rec compile_path1 pred path topo port = match path with
   | Hop s1 :: Hop s2 :: path -> 
-    let p1,p2 = get_ports topo s1 s2 in
+    let p1,p2 = G.get_ports topo s1 s2 in
     Par ((Pol ((And (pred, (And (InPort port,Switch s1)))), [To (unmodified, p1)])), ((compile_path1 pred ((Hop s2) :: path) topo p2)))
-  | Hop s1 :: [Host h] -> (match get_host_port topo h with
+  | Hop s1 :: [Host h] -> (match G.get_host_port topo h with
       | Some (_,p1) ->  Pol ((And (pred, (And (InPort port,Switch s1)))), [To ({unmodified with NetCoreEval0x04.modifyDlVlan=(Some None)}, p1)])
       | None -> Pol (((And (pred, (And (InPort port,Switch s1))))), [GetPacket (bad_hop_handler s1 (Int64.of_int h))]))
   | _ -> Pol (pred, [])
 
 let compile_path pred path topo (vid : WordInterface.Word16.t)  = match path with
-  | Host h1 :: Hop s :: [Host h2] -> (match (get_host_port topo h1, get_host_port topo h2) with
+  | Host h1 :: Hop s :: [Host h2] -> (match (G.get_host_port topo h1, G.get_host_port topo h2) with
 	  (* assert s1 = s *)
       | (Some (s1,p1), Some (s2,p2)) -> Pol ((And (pred, (And (InPort p1,Switch s)))), [To (unmodified, p2)]))
-  | Host h :: Hop s1 :: Hop s2 :: path -> (match get_host_port topo h with
+  | Host h :: Hop s1 :: Hop s2 :: path -> (match G.get_host_port topo h with
       (* assert s1 = s *)
-      | Some (s1,inport) -> let p1,p2 = get_ports topo s1 s2 in
+      | Some (s1,inport) -> let p1,p2 = G.get_ports topo s1 s2 in
 			    let pol = Pol (And (pred, (And (InPort inport,Switch s1))), [To ({unmodified with NetCoreEval0x04.modifyDlVlan=(Some (Some vid))}, p1)]) in
 			    Par (pol, compile_path1 (And (DlVlan (Some vid), And (pred, DlVlanPcp 0))) (Hop s2 :: path) topo p2))
 
@@ -164,8 +170,8 @@ let rec compile_regex pol topo = match pol with
 
 let rec del_links path topo = match path with
   | Host h :: path -> del_links path topo
-  | Hop s1 :: Hop s2 :: path -> let p1,p2 = get_ports topo s1 s2 in
-				del_edge topo s1 p1; del_edge topo s2 p2; del_links path topo
+  | Hop s1 :: Hop s2 :: path -> let p1,p2 = G.get_ports topo s1 s2 in
+				G.del_edge topo s1 p1; G.del_edge topo s2 p2; del_links path topo
   | Hop s :: [Host h] -> ()
 
 let get_links _ _ = []

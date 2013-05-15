@@ -30,6 +30,8 @@ sig
   val has_node : graph -> a -> bool
   val del_edge : graph -> a -> b -> unit
   val del_edges : graph -> (a*b) list -> unit
+  val del_link : graph -> a -> a -> unit
+  val del_links : graph -> (a*a) list -> unit
   val copy : graph -> graph
   val to_string : graph -> string
   exception NoPath of string*string
@@ -60,6 +62,7 @@ module Graph : GRAPH =
     let add_host_edge (_, hgraph) h sw pt = H.add hgraph h (sw,pt)
     let del_edge (graph, _) sw1 pt1 = try H.remove (H.find graph sw1) pt1 with _ -> raise (NotFound(Printf.sprintf "Can't find %Ld to del_edge %ld\n" sw1 pt1))
     let del_edges graph edges = List.iter (fun (a,b) -> del_edge graph a b) edges
+
 
     let create () = (H.create 5, H.create 5)
 
@@ -102,6 +105,10 @@ module Graph : GRAPH =
       let unwrap (Some foo) = foo in
       try unwrap (H.fold (fun pt (sw, pt') acc -> if sw = s2 then Some (pt, pt') else acc) s1Tbl None) 
       with _ -> raise (NotFound(Printf.sprintf "Can't find ports to switch %Ld from %Ld\n" s2 s1))
+
+    let del_link (graph, foo) sw1 sw2 = let p1,p2 = get_ports (graph,foo) sw1 sw2 in
+					del_edge (graph,foo) sw1 p1
+    let del_links graph edges = List.iter (fun (a,b) -> del_link graph a b) edges
 
     let next_hop (topo,_) sw p = 
       let swTbl = try (Hashtbl.find topo sw) 

@@ -30,6 +30,9 @@ val expand_regex_with_match :
 val expand_path_with_match1 :
   (regex * regex) list -> Graph.Graph.a -> Graph.Graph.graph -> (regex * regex) list
 
+val expand_path_with_match_bad_links :
+  (regex * regex) list -> Graph.Graph.a -> Graph.Graph.graph -> (Graph.Graph.a * Graph.Graph.a) list -> (regex * regex) list
+
 val expand_path_with_match :
   regex list -> Graph.Graph.graph -> (regex * regex) list
 

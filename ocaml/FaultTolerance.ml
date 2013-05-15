@@ -12,8 +12,6 @@ end
 
 open NetCoreEval0x04
 
-let expand_regex_with_match_bad_links regex sw topo bad_links = expand_path_with_match1 regex sw topo
-
 let rec range k n = if k = n then [] else k :: range (k+1) n
 
 let trivial_pol = Pol(NoPackets, [])
@@ -32,7 +30,7 @@ let clear_path path = List.map (fun a -> (a,a)) (Pathetic.Regex.collapse_star (L
 let rec build_k_children sw path n k fail_set topo =
   if k > n then Some [] 
   else
-    let path = expand_regex_with_match_bad_links path sw topo fail_set in
+    let path = expand_path_with_match_bad_links path sw topo fail_set in
     match (List.hd (fst (List.split path))) with
       | Host h -> Some [KLeaf h]
       | Hop new_sw' -> 
