@@ -27,6 +27,7 @@ let rec k_tree_to_string tree = match tree with
 let clear_path path = List.map (fun a -> (a,a)) (Pathetic.Regex.collapse_star (List.map snd path))
 
 (* Initial version: no backtracking *)
+(* Build (n - k) backup paths at 'sw' according to spec 'path' avoiding links 'fail_set'. *)
 let rec build_k_children sw path n k fail_set topo =
   if k > n then Some [] 
   else
@@ -34,12 +35,13 @@ let rec build_k_children sw path n k fail_set topo =
     match List.hd path with
       | (Host h,_) -> Some [KLeaf h]
       | (Hop new_sw',_) -> 
-	(match build_k_tree_from_path path n k fail_set topo with
+	(match build_k_tree_from_path path n k ((sw, new_sw') :: fail_set) topo with
 	  | None -> None
 	  | Some tree -> (match build_k_children sw (clear_path path) n (k + 1) ((sw, new_sw') :: fail_set) topo with
 	      | None -> None
 	      | Some children -> Some (tree :: children)))
 and
+    (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
     build_k_tree_from_path path n k fail_set topo = 
       Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s\n%!" (String.concat ";" (List.map (fun (a,b) -> 
       Printf.sprintf "(%s, %s)" (regex_to_string a) (regex_to_string b)) path));

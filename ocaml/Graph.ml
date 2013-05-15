@@ -43,7 +43,11 @@ module Graph : GRAPH =
     type a = M.switchId
     type b = P.portId
     type h = int
-    type graph = ((a,(b, (a*b)) H.t) H.t) * ((h, (a*b)) H.t)
+    (* sw -> port -> (sw*port) *)
+    type portTbl_t = ((a,(b, (a*b)) H.t) H.t)
+    (* h -> (sw*port) *)
+    type hostTbl_t = ((h, (a*b)) H.t)
+    type graph = portTbl_t * hostTbl_t
     exception NoPath of string*string
     exception NotFound of string
 
@@ -106,8 +110,8 @@ module Graph : GRAPH =
       try unwrap (H.fold (fun pt (sw, pt') acc -> if sw = s2 then Some (pt, pt') else acc) s1Tbl None) 
       with _ -> raise (NotFound(Printf.sprintf "Can't find ports to switch %Ld from %Ld\n" s2 s1))
 
-    let del_link (graph, foo) sw1 sw2 = let p1,p2 = get_ports (graph,foo) sw1 sw2 in
-					del_edge (graph,foo) sw1 p1
+    let del_link graph sw1 sw2 = let p1,p2 = get_ports graph sw1 sw2 in
+					del_edge graph sw1 p1
     let del_links graph edges = List.iter (fun (a,b) -> del_link graph a b) edges
 
     let next_hop (topo,_) sw p = 
