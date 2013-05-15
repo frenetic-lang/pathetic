@@ -58,6 +58,7 @@ let modification_to_openflow0x01 mods =
 	  | Some None -> [PopVlan]
 	  | Some (Some n) -> [PushVlan;SetField (OxmVlanVId (val_to_mask n))]
 	  | None -> [])
+  @ (maybe_openflow0x01_modification dlVlanPcp (fun x -> SetField (OxmVlanPcp x)))
 
 (** val translate_action : portId option -> act -> actionSequence **)
 
