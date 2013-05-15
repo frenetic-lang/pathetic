@@ -101,6 +101,20 @@ let pat_to_string pat =
     (wildcard_to_string "ptrnDlVlanPcp = " pat.PatternImplDef.ptrnDlVlanPcp) 
     (wildcard_to_string "ptrnInPort = " pat.PatternImplDef.ptrnInPort)
 
+let option_to_string str opt = match opt with
+  | None -> ""
+  | Some v -> Printf.sprintf "%s%d" str v
+
+let option_option_to_string str opt = match opt with
+  | None -> ""
+  | Some None -> Printf.sprintf "%s None" str
+  | Some (Some v) -> Printf.sprintf "%s%d" str v
+
+let mod_to_string modif =
+  Printf.sprintf "{ %s; %s; }" 
+    (option_option_to_string "modDlVlan = " modif.modifyDlVlan) 
+    (option_to_string "modDlVlanPcp = " modif.modifyDlVlanPcp)
+
 let rec pred_to_string pred = match pred with
   | PrAnd (p1,p2) -> Printf.sprintf "(PrAnd %s %s)" (pred_to_string p1) (pred_to_string p2)
   | PrOr (p1,p2) -> Printf.sprintf "(PrOr %s %s)" (pred_to_string p1) (pred_to_string p2)
@@ -119,7 +133,7 @@ let pp_to_string pp = match pp with
   | Any -> "Any"
 
 let act_to_string act = match act with
-  | Forward (modify,pt) -> Printf.sprintf "To %s" (pp_to_string pt)
+  | Forward (modify,pt) -> Printf.sprintf "To(%s,%s)" (mod_to_string modify) (pp_to_string pt)
   | Group gid -> Printf.sprintf "Group %ld" gid
   | ActGetPkt _ -> "AcGetPkt"
 

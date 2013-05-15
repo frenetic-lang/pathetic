@@ -53,12 +53,18 @@ let modification_to_openflow0x01 mods =
     modifyNwTos = nwTos; modifyTpSrc = tpSrc; modifyTpDst = tpDst } = mods
   in
   (maybe_openflow0x01_modification dlSrc (fun x -> SetField (OxmEthSrc (val_to_mask x)))) 
-    @ (maybe_openflow0x01_modification dlDst (fun x -> SetField (OxmEthDst (val_to_mask x))))
-    @ (match dlVlan with
-	  | Some None -> [PopVlan]
-	  | Some (Some n) -> [PushVlan;SetField (OxmVlanVId (val_to_mask n))]
-	  | None -> [])
+  @ (maybe_openflow0x01_modification dlDst (fun x -> SetField (OxmEthDst (val_to_mask x))))
+  (* If vlan, create vlan tag *)
+  @ (match (dlVlan, dlVlanPcp) with
+    | (Some None,_) -> [PopVlan]
+    | (Some (Some n),_) -> [PushVlan]
+    | (_, Some _) -> [PushVlan]
+    | (None, None) -> [])
   @ (maybe_openflow0x01_modification dlVlanPcp (fun x -> SetField (OxmVlanPcp x)))
+  @ (match dlVlan with
+    | Some None -> []
+    | Some (Some n) -> [SetField (OxmVlanVId (val_to_mask n))]
+    | None -> [])
 
 (** val translate_action : portId option -> act -> actionSequence **)
 

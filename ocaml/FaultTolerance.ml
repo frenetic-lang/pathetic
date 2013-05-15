@@ -168,6 +168,7 @@ let expand_regex_with_match_bad_links regex sw topo bad_links = expand_path_with
 let rec range k n = if k = n then [] else k :: range (k+1) n
 
 let trivial_pol = Pol(NoPackets, [])
+
 type k_tree = 
   | KLeaf of int
   | KTree of switchId * (k_tree list)
@@ -217,33 +218,55 @@ let match_tag pathTag tag = And(DlVlan (Some pathTag), DlVlanPcp tag)
 
 module Gen =
 struct
-  let create () = ref 0
+  let create () = ref 1
   let next_val g = let v = !g in
 		   incr g;
 		   v
 end
 
-let next_hop_from_k_tree pr sw tree topo pathTag tag = 
-  Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree);
+type tagged_k_tree = 
+  | KLeaf_t of int
+  | KTree_t of switchId * ((int * tagged_k_tree) list)
+
+let rec tagged_k_tree_to_string tree = match tree with
+  | KLeaf_t h -> Printf.sprintf "KLeaf_t %d" h
+  | KTree_t(sw, children) -> Printf.sprintf "KTree(%Ld, [ %s ])" sw 
+    (String.concat "; " (List.map 
+			   (fun (k,t) -> Printf.sprintf "(%d,%s)" k (tagged_k_tree_to_string t)) 
+			   children))
+
+let rec tag_k_tree tree tag gensym = match tree with
+  | KLeaf h -> KLeaf_t h
+  | KTree (sw, children) -> let first_child = (tag, tag_k_tree (List.hd children) tag gensym) in
+			    let backup_children = List.map (fun child -> let new_tag = (Gen.next_val gensym) in
+									 (new_tag, tag_k_tree child new_tag gensym)) (List.tl children) in
+			    KTree_t (sw, first_child :: backup_children)
+
+let next_hop_from_k_tree pr sw tree topo pathTag = 
+  (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
   match tree with
-  | KLeaf host -> (match G.get_host_port topo host with
+  | (tag, KLeaf_t host) -> (match G.get_host_port topo host with
       | Some (s1,p1) -> 
 	Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %Ld %Ld\n%!" sw s1;
 	assert (s1 = sw); (To(strip_tag, p1)), sw, p1, tree)
-  | KTree (sw', _) -> (match G.get_ports topo sw sw' with
+  | (tag, KTree_t (sw', _)) -> (match G.get_ports topo sw sw' with
       | (p1,p2) -> (To(stamp_tag pathTag tag, p1)), sw', p2, tree)
 
+let rec range fst lst = 
+  if fst >= lst then [] else
+    fst :: range (fst + 1) lst
+
 (* Need to add inport matching *)
-let rec policy_from_k_tree pr sw inport tree topo pathTag tag gensym = 
-  Printf.printf "[FaulTolerance.ml] policy_from_k_tree %Ld %s\n%!" sw (k_tree_to_string tree);
+let rec policy_from_k_tree pr sw inport flag tree topo pathTag tag = 
+  Printf.printf "[FaulTolerance.ml] policy_from_k_tree %Ld %s\n%!" sw (tagged_k_tree_to_string tree);
   match tree with
-    | KLeaf h -> (match G.get_host_port topo h with
+    | KLeaf_t h -> (match G.get_host_port topo h with
 	| Some (s1,p1) -> assert (s1 = sw); Pol(And( Switch sw, And(InPort inport, And(pr, match_tag pathTag tag))), [To(strip_tag, p1)]))
-    | KTree(sw', children) -> 
+    | KTree_t(sw', children) -> 
       assert (sw = sw');
-      let children_ports = List.map (fun b -> next_hop_from_k_tree pr sw' b topo pathTag (Gen.next_val gensym)) children in
-      let backup = LPar(And( Switch sw', And (InPort inport, And(pr, match_tag pathTag tag))), List.map (fun (a,b,c,d) -> a) children_ports) in
-      let children_pols = List.fold_left (fun a (_,sw'', inport,tree) -> Par(a, policy_from_k_tree pr sw'' inport tree topo pathTag (Gen.next_val gensym) gensym)) trivial_pol children_ports in
+      let children_ports = List.map (fun a -> next_hop_from_k_tree pr sw' a topo pathTag) children in
+      let backup = LPar(And( Switch sw', And (InPort inport, And(pr, (if flag then All else match_tag pathTag tag)))), List.map (fun (a,b,c,d) -> a) children_ports) in
+      let children_pols = List.fold_left (fun a (_,sw'', inport,tree) -> Par(a, policy_from_k_tree pr sw'' inport false (snd tree) topo pathTag (fst tree))) trivial_pol children_ports in
       Par(backup, children_pols)
 
 let first = List.hd
@@ -259,7 +282,9 @@ let rec compile_ft_regex pred vid regex k topo =
   let srcSw,srcPort = (match G.get_host_port topo srcHost with Some (sw,p) -> (sw,p)) in
   let dstSw,dstPort = (match G.get_host_port topo dstHost with Some (sw,p) -> (sw,p)) in
   let genSym = Gen.create() in
-  policy_from_k_tree pred srcSw srcPort ktree topo vid (Gen.next_val genSym) genSym
+  let tag = Gen.next_val genSym in
+  let tagged_ktree = tag_k_tree ktree tag genSym in
+  policy_from_k_tree pred srcSw srcPort true tagged_ktree topo vid tag
 
     
 let rec compile_ft_to_nc regpol topo =
