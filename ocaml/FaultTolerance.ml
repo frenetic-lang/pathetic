@@ -35,7 +35,7 @@ let rec build_k_children sw path n k fail_set topo =
     match List.hd path with
       | (Host h,_) -> Some [KLeaf h]
       | (Hop new_sw',_) -> 
-	(match build_k_tree_from_path path n k ((sw, new_sw') :: fail_set) topo with
+	(match build_k_tree_from_path path n k fail_set topo with
 	  | None -> None
 	  | Some tree -> (match build_k_children sw (clear_path path) n (k + 1) ((sw, new_sw') :: fail_set) topo with
 	      | None -> None
