@@ -31,12 +31,12 @@ let rec build_k_children sw path n k fail_set topo =
   if k > n then Some [] 
   else
     let path = expand_path_with_match_bad_links path sw topo fail_set in
-    match (List.hd (fst (List.split path))) with
-      | Host h -> Some [KLeaf h]
-      | Hop new_sw' -> 
+    match List.hd path with
+      | (Host h,_) -> Some [KLeaf h]
+      | (Hop new_sw',_) -> 
 	(match build_k_tree_from_path path n k fail_set topo with
 	  | None -> None
-	  | Some tree -> (match build_k_children sw path n (k + 1) ((sw, new_sw') :: fail_set) topo with
+	  | Some tree -> (match build_k_children sw (clear_path path) n (k + 1) ((sw, new_sw') :: fail_set) topo with
 	      | None -> None
 	      | Some children -> Some (tree :: children)))
 and

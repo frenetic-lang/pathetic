@@ -117,6 +117,9 @@ let rec expand_path_with_match1 path hop topo =
   | [(Host h1, a)] -> [(Host h1, a)]
 
 let expand_path_with_match_bad_links regex sw topo bad_links =
+  Printf.printf "[Regex.ml] expand_path_with_match_bad_links %Ld %s %s\n%!" sw (String.concat ";" (List.map (fun (a,b) -> 
+    Printf.sprintf "(%s, %s)" (regex_to_string a) (regex_to_string b)) regex)) (String.concat ";" (List.map (fun (a,b) -> 
+    Printf.sprintf "(%Ld,%Ld)" a b) bad_links));
   let new_topo = G.copy topo in
   G.del_links new_topo bad_links;
   expand_path_with_match1 regex sw new_topo
