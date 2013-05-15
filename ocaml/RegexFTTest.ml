@@ -4,7 +4,7 @@ open Platform0x04
 open FaultTolerance
 open NetCoreFT
 open Pathetic.Regex
-
+module H = Hashtbl
 module G = Graph.Graph
 
 module D = DiamondTopo
