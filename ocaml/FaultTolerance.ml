@@ -20,6 +20,7 @@ type k_tree =
   | KLeaf of int
   | KTree of switchId * (k_tree list)
 
+(* Tree w/ ordered children. Leafs are hosts, internal nodes are switches *)
 let rec k_tree_to_string tree = match tree with
   | KLeaf h -> Printf.sprintf "KLeaf %d" h
   | KTree(sw, children) -> Printf.sprintf "KTree(%Ld, [ %s ])" sw (String.concat "; " (List.map k_tree_to_string children))
@@ -67,6 +68,7 @@ let match_tag pathTag tag = And(DlVlan (Some pathTag), DlVlanPcp tag)
 
 module Gen =
 struct
+  (* OpenFlow doesn't like setting a PCP of 0, so start w/ 1 *)
   let create () = ref 1
   let next_val g = let v = !g in
 		   incr g;
@@ -86,17 +88,19 @@ let rec tagged_k_tree_to_string tree = match tree with
 
 let rec tag_k_tree tree tag gensym = match tree with
   | KLeaf h -> KLeaf_t h
-  | KTree (sw, children) -> let first_child = (tag, tag_k_tree (List.hd children) tag gensym) in
-			    let backup_children = List.map (fun child -> let new_tag = (Gen.next_val gensym) in
-									 (new_tag, tag_k_tree child new_tag gensym)) (List.tl children) in
-			    KTree_t (sw, first_child :: backup_children)
+  | KTree (sw, children) -> 
+    (* First child gets the parent's tag *)
+    let first_child = (tag, tag_k_tree (List.hd children) tag gensym) in
+    (* Other children get unique genSym'ed tag *)
+    let backup_children = List.map (fun child -> let new_tag = (Gen.next_val gensym) in
+						 (new_tag, tag_k_tree child new_tag gensym)) (List.tl children) in
+    KTree_t (sw, first_child :: backup_children)
 
 let next_hop_from_k_tree pr sw tree topo pathTag = 
   (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
   match tree with
   | (tag, KLeaf_t host) -> (match G.get_host_port topo host with
       | Some (s1,p1) -> 
-	Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %Ld %Ld\n%!" sw s1;
 	assert (s1 = sw); (To(strip_tag, p1)), sw, p1, tree)
   | (tag, KTree_t (sw', _)) -> (match G.get_ports topo sw sw' with
       | (p1,p2) -> (To(stamp_tag pathTag tag, p1)), sw', p2, tree)
@@ -105,7 +109,7 @@ let rec range fst lst =
   if fst >= lst then [] else
     fst :: range (fst + 1) lst
 
-(* Need to add inport matching *)
+(* Converts a k fault tolerant tree into a NetCore policy *)
 let rec policy_from_k_tree pr sw inport flag tree topo pathTag tag = 
   Printf.printf "[FaulTolerance.ml] policy_from_k_tree %Ld %s\n%!" sw (tagged_k_tree_to_string tree);
   match tree with
