@@ -6,13 +6,17 @@ module G = Graph.Graph
 
 open NetCoreEval0x04
 
+(** Constructing k-resilient trees (k-trees) from regular expression paths **)
+
 let trivial_pol = Pol(NoPackets, [])
 
+(* Tree w/ ordered children. Leafs are hosts, internal nodes are switches *)
 type k_tree = 
   | KLeaf of int
   | KTree of switchId * (k_tree list)
 
-(* Tree w/ ordered children. Leafs are hosts, internal nodes are switches *)
+exception NoTree of string
+
 let rec k_tree_to_string tree = match tree with
   | KLeaf h -> Printf.sprintf "KLeaf %d" h
   | KTree(sw, children) -> Printf.sprintf "KTree(%Ld, [ %s ])" sw (String.concat "; " (List.map k_tree_to_string children))
@@ -37,8 +41,9 @@ let rec build_k_children sw path n k fail_set topo =
 and
     (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
     build_k_tree_from_path path n k fail_set topo = 
-      Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s\n%!" (String.concat ";" (List.map (fun (a,b) -> 
-      Printf.sprintf "(%s, %s)" (regex_to_string a) (regex_to_string b)) path));
+      Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s\n%!" 
+	(String.concat ";" (List.map (fun (a,b) -> 
+	  Printf.sprintf "(%s, %s)" (regex_to_string a) (regex_to_string b)) path));
     match path with
       | (Hop sw, _) :: [(Host h1,_)] -> Some (KTree(sw, [KLeaf h1]))
       | (Hop sw, a) :: (Hop sw', b) :: path -> 
@@ -47,23 +52,27 @@ and
 	  | Some children -> Some (KTree(sw, children)))
       | (Host h, _) :: path -> build_k_tree_from_path path n k fail_set topo
 
-exception NoTree of string
-
 let build_k_tree n regex topo = 
-  let path = expand_path_with_match regex topo in
-  match build_k_tree_from_path path n 0 [] topo with
+  match build_k_tree_from_path (expand_path_with_match regex topo) n 0 [] topo with
     | None -> raise (NoTree "failed to build k-tree")
     | Some tree -> tree
 
 let strip_tag = {unmodified with modifyDlVlan = Some None}
-let stamp_tag flag pathTag tag = if flag then
+
+let stamp_tag flag pathTag tag = 
+  (* If we set the VLAN, the controller will push a new tag on. Should probably fix that *)
+  if flag then
     {unmodified with modifyDlVlan = Some (Some pathTag); modifyDlVlanPcp = (Some tag)}
   else
     {unmodified with modifyDlVlanPcp = (Some tag)}
-let match_tag flag pathTag tag = if flag then
+
+let match_tag flag pathTag tag = 
+  if flag then
     All
   else
     And(DlVlan (Some pathTag), DlVlanPcp tag)
+
+(** Compiling k-trees into NetCore policies **)
 
 module GenSym =
 struct
