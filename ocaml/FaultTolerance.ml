@@ -67,11 +67,8 @@ let match_tag flag pathTag tag = if flag then
 
 module GenSym =
 struct
-  (* OpenFlow doesn't like setting a PCP of 0, so start w/ 1 *)
-  let create () = ref 1
-  let next_val g = let v = !g in
-		   incr g;
-		   v
+  let create () = ref 0
+  let next_val g =  incr g; !g
 end
 
 type tagged_k_tree = 
