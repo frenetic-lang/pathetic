@@ -66,7 +66,10 @@ let stamp_tag flag pathTag tag = if flag then
     {unmodified with modifyDlVlan = Some (Some pathTag); modifyDlVlanPcp = (Some tag)}
   else
     {unmodified with modifyDlVlanPcp = (Some tag)}
-let match_tag pathTag tag = And(DlVlan (Some pathTag), DlVlanPcp tag)
+let match_tag flag pathTag tag = if flag then
+    All
+  else
+    And(DlVlan (Some pathTag), DlVlanPcp tag)
 
 module Gen =
 struct
@@ -123,12 +126,14 @@ let rec policy_from_k_tree pr sw inport first_hop_flag tree topo pathTag tag =
   Printf.printf "[FaulTolerance.ml] policy_from_k_tree %Ld %s\n%!" sw (tagged_k_tree_to_string tree);
   match tree with
     | KLeaf_t h -> (match G.get_host_port topo h with
-	| Some (s1,p1) -> assert (s1 = sw); Pol(And( Switch sw, And(InPort inport, And(pr, match_tag pathTag tag))), [To(strip_tag, p1)]))
+	| Some (s1,p1) -> assert (s1 = sw); 
+	  Pol(And( Switch sw, And(InPort inport, And(pr, match_tag first_hop_flag pathTag tag))), 
+	      [To(strip_tag, p1)]))
     | KTree_t(sw', children) -> 
       assert (sw = sw');
       let children_ports = List.map (next_port_from_k_tree pr sw' topo first_hop_flag pathTag) children in
-      let is_tagged = if first_hop_flag then All else match_tag pathTag tag in
-      let backup = LPar(And( Switch sw', And (InPort inport, And(pr, is_tagged))), children_ports) in
+      let backup = LPar(And( Switch sw', And (InPort inport, And(pr, match_tag first_hop_flag pathTag tag))), 
+			children_ports) in
       let next_hops = List.map (next_hop_from_k_tree pr sw' topo pathTag) children in
       let children_pols = List.fold_left 
 	(fun a (sw'', inport,tree) -> 
