@@ -135,14 +135,8 @@ let rec policy_from_k_tree pr sw inport first_hop_flag tree topo pathTag tag =
 	  Par(a, policy_from_k_tree pr sw'' inport false (snd tree) topo pathTag (fst tree))) trivial_pol next_hops in
       Par(backup, children_pols)
 
-let first = List.hd
-let rec last lst = 
-  match lst with
-    | [l] -> l
-    | a :: lst -> last lst
-
 let rec compile_ft_regex pred vid regex k topo = 
-  let Host srcHost = first regex in
+  let Host srcHost = List.hd regex in
   let ktree = build_k_tree k regex topo in
   let srcSw,srcPort = (match G.get_host_port topo srcHost with Some (sw,p) -> (sw,p)) in
   let genSym = Gen.create() in
