@@ -4,12 +4,6 @@ open NetCoreFT
 
 module G = Graph.Graph
 
-module Gensym =
-struct
-  let count = ref (Int32.of_int 0)
-  let next () = count := Int32.succ !count; !count
-end
-
 open NetCoreEval0x04
 
 let trivial_pol = Pol(NoPackets, [])
@@ -71,7 +65,7 @@ let match_tag flag pathTag tag = if flag then
   else
     And(DlVlan (Some pathTag), DlVlanPcp tag)
 
-module Gen =
+module GenSym =
 struct
   (* OpenFlow doesn't like setting a PCP of 0, so start w/ 1 *)
   let create () = ref 1
@@ -93,12 +87,12 @@ let rec tagged_k_tree_to_string tree = match tree with
 
 let rec tag_k_tree tree tag gensym = match tree with
   | KLeaf h -> KLeaf_t h
-  | KTree (sw, children) -> 
+  | KTree (sw, (first :: rest)) -> 
     (* First child gets the parent's tag *)
-    let first_child = (tag, tag_k_tree (List.hd children) tag gensym) in
+    let first_child = (tag, tag_k_tree first tag gensym) in
     (* Other children get unique genSym'ed tag *)
-    let backup_children = List.map (fun child -> let new_tag = (Gen.next_val gensym) in
-						 (new_tag, tag_k_tree child new_tag gensym)) (List.tl children) in
+    let backup_children = List.map (fun child -> let new_tag = (GenSym.next_val gensym) in
+						 (new_tag, tag_k_tree child new_tag gensym)) rest in
     KTree_t (sw, first_child :: backup_children)
 
 let next_port_from_k_tree pr sw topo first_hop_flag pathTag tree = 
@@ -144,14 +138,17 @@ let rec compile_ft_regex pred vid regex k topo =
   let Host srcHost = List.hd regex in
   let ktree = build_k_tree k regex topo in
   let srcSw,srcPort = (match G.get_host_port topo srcHost with Some (sw,p) -> (sw,p)) in
-  let genSym = Gen.create() in
-  let tag = Gen.next_val genSym in
+  let genSym = GenSym.create() in
+  let tag = GenSym.next_val genSym in
   let tagged_ktree = tag_k_tree ktree tag genSym in
   policy_from_k_tree pred srcSw srcPort true tagged_ktree topo vid tag
 
     
-let rec compile_ft_to_nc regpol topo =
+let rec compile_ft_to_nc1 regpol topo genSym =
   match regpol with
-    | RegUnion (p1,p2) -> Par(compile_ft_to_nc p1 topo, compile_ft_to_nc p2 topo)
-    | RegPol (pred, path, k) -> let vid = Int32.to_int (Gensym.next ()) in
+    | RegUnion (p1,p2) -> Par(compile_ft_to_nc1 p1 topo genSym, compile_ft_to_nc1 p2 topo genSym)
+    | RegPol (pred, path, k) -> let vid = GenSym.next_val genSym in
 				      compile_ft_regex pred vid (flatten_reg path) k topo
+
+let rec compile_ft_to_nc regpol topo =
+  compile_ft_to_nc1 regpol topo (GenSym.create())
