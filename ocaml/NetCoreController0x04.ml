@@ -58,8 +58,7 @@ let modification_to_openflow0x01 mods =
   @ (match (dlVlan, dlVlanPcp) with
     | (Some None,_) -> [PopVlan]
     | (Some (Some n),_) -> [PushVlan]
-    | (_, Some _) -> [PushVlan]
-    | (None, None) -> [])
+    | (_, _) -> [])
   @ (maybe_openflow0x01_modification dlVlanPcp (fun x -> SetField (OxmVlanPcp x)))
   @ (match dlVlan with
     | Some None -> []
