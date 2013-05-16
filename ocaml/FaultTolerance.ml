@@ -12,8 +12,6 @@ end
 
 open NetCoreEval0x04
 
-let rec range k n = if k = n then [] else k :: range (k+1) n
-
 let trivial_pol = Pol(NoPackets, [])
 
 type k_tree = 
@@ -25,6 +23,7 @@ let rec k_tree_to_string tree = match tree with
   | KLeaf h -> Printf.sprintf "KLeaf %d" h
   | KTree(sw, children) -> Printf.sprintf "KTree(%Ld, [ %s ])" sw (String.concat "; " (List.map k_tree_to_string children))
 
+(* Takes a path-regex and deletes the expanded path, replacing it with the original regex *)
 let clear_path path = List.map (fun a -> (a,a)) (Pathetic.Regex.collapse_star (List.map snd path))
 
 (* Initial version: no backtracking *)
@@ -118,10 +117,6 @@ let next_hop_from_k_tree pr sw topo pathTag tree =
   | (tag, KTree_t (sw', _)) -> 
     (match G.get_ports topo sw sw' with
       | (p1,p2) -> (sw', p2, tree))
-
-let rec range fst lst = 
-  if fst >= lst then [] else
-    fst :: range (fst + 1) lst
 
 (* Converts a k fault tolerant tree into a NetCore policy *)
 let rec policy_from_k_tree pr sw inport first_hop_flag tree topo pathTag tag = 
