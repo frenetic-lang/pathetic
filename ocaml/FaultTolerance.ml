@@ -99,15 +99,25 @@ let rec tag_k_tree tree tag gensym = match tree with
 						 (new_tag, tag_k_tree child new_tag gensym)) (List.tl children) in
     KTree_t (sw, first_child :: backup_children)
 
-let next_hop_from_k_tree pr sw tree topo first_hop_flag pathTag = 
+let next_port_from_k_tree pr sw topo first_hop_flag pathTag tree = 
   (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
   match tree with
   | (tag, KLeaf_t host) -> (match G.get_host_port topo host with
       | Some (s1,p1) -> 
-	assert (s1 = sw); (To(strip_tag, p1)), sw, p1, tree)
+	assert (s1 = sw); To(strip_tag, p1))
   | (tag, KTree_t (sw', _)) -> 
     (match G.get_ports topo sw sw' with
-      | (p1,p2) -> (To(stamp_tag first_hop_flag pathTag tag, p1)), sw', p2, tree)
+      | (p1,p2) -> To(stamp_tag first_hop_flag pathTag tag, p1))
+
+let next_hop_from_k_tree pr sw topo pathTag tree = 
+  (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
+  match tree with
+  | (tag, KLeaf_t host) -> (match G.get_host_port topo host with
+      | Some (s1,p1) -> 
+	assert (s1 = sw); (sw, p1, tree))
+  | (tag, KTree_t (sw', _)) -> 
+    (match G.get_ports topo sw sw' with
+      | (p1,p2) -> (sw', p2, tree))
 
 let rec range fst lst = 
   if fst >= lst then [] else
@@ -121,9 +131,11 @@ let rec policy_from_k_tree pr sw inport first_hop_flag tree topo pathTag tag =
 	| Some (s1,p1) -> assert (s1 = sw); Pol(And( Switch sw, And(InPort inport, And(pr, match_tag pathTag tag))), [To(strip_tag, p1)]))
     | KTree_t(sw', children) -> 
       assert (sw = sw');
-      let children_ports = List.map (fun a -> next_hop_from_k_tree pr sw' a topo first_hop_flag pathTag) children in
-      let backup = LPar(And( Switch sw', And (InPort inport, And(pr, (if first_hop_flag then All else match_tag pathTag tag)))), List.map (fun (a,b,c,d) -> a) children_ports) in
-      let children_pols = List.fold_left (fun a (_,sw'', inport,tree) -> Par(a, policy_from_k_tree pr sw'' inport false (snd tree) topo pathTag (fst tree))) trivial_pol children_ports in
+      let children_ports = List.map (next_port_from_k_tree pr sw' topo first_hop_flag pathTag) children in
+      let children_hops = List.map (next_hop_from_k_tree pr sw' topo pathTag) children in
+      let backup = LPar(And( Switch sw', And (InPort inport, And(pr, (if first_hop_flag then All else match_tag pathTag tag)))), children_ports) in
+      let children_pols = List.fold_left (fun a (sw'', inport,tree) -> 
+	Par(a, policy_from_k_tree pr sw'' inport false (snd tree) topo pathTag (fst tree))) trivial_pol children_hops in
       Par(backup, children_pols)
 
 let first = List.hd
