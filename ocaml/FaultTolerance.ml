@@ -57,20 +57,20 @@ let build_k_tree n regex topo =
     | None -> raise (NoTree "failed to build k-tree")
     | Some tree -> tree
 
-let strip_tag = {unmodified with modifyDlVlan = Some None}
+let strip_tag = { unmodified with modifyDlVlan = Some None }
 
 let stamp_tag flag pathTag tag = 
   (* If we set the VLAN, the controller will push a new tag on. Should probably fix that *)
   if flag then
-    {unmodified with modifyDlVlan = Some (Some pathTag); modifyDlVlanPcp = (Some tag)}
+    { unmodified with modifyDlVlan = Some (Some pathTag); modifyDlVlanPcp = (Some tag) }
   else
-    {unmodified with modifyDlVlanPcp = (Some tag)}
+    { unmodified with modifyDlVlanPcp = (Some tag) }
 
 let match_tag flag pathTag tag = 
   if flag then
     All
   else
-    And(DlVlan (Some pathTag), DlVlanPcp tag)
+    And( DlVlan (Some pathTag), DlVlanPcp tag )
 
 (** Compiling k-trees into NetCore policies **)
 
@@ -101,49 +101,49 @@ let rec tag_k_tree tree tag gensym = match tree with
 						 (new_tag, tag_k_tree child new_tag gensym)) rest in
     KTree_t (sw, first_child :: backup_children)
 
-let next_port_from_k_tree pr sw topo first_hop_flag pathTag tree = 
+let next_port_from_k_tree sw topo first_hop_flag pathTag tree = 
   (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
   match tree with
-  | (tag, KLeaf_t host) -> (match G.get_host_port topo host with
-      | Some (s1,p1) -> 
-	assert (s1 = sw); To(strip_tag, p1))
+  | (tag, KLeaf_t host) -> 
+    let Some (s1,p1) = G.get_host_port topo host in
+    assert (s1 = sw); To(strip_tag, p1)
   | (tag, KTree_t (sw', _)) -> 
-    (match G.get_ports topo sw sw' with
-      | (p1,p2) -> To(stamp_tag first_hop_flag pathTag tag, p1))
+    let p1,p2 = G.get_ports topo sw sw' in
+    To(stamp_tag first_hop_flag pathTag tag, p1)
 
-let next_hop_from_k_tree pr sw topo pathTag tree = 
+let next_hop_from_k_tree sw topo tree = 
   (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
   match tree with
-  | (tag, KLeaf_t host) -> (match G.get_host_port topo host with
-      | Some (s1,p1) -> 
-	assert (s1 = sw); (sw, p1, tree))
-  | (tag, KTree_t (sw', _)) -> 
-    (match G.get_ports topo sw sw' with
-      | (p1,p2) -> (sw', p2, tree))
+  | (_, KLeaf_t host) -> 
+    let Some (s1,p1) = G.get_host_port topo host in
+    assert (s1 = sw); (sw, p1, tree)
+  | (_, KTree_t (sw', _)) -> 
+    let p1,p2 = G.get_ports topo sw sw' in
+    (sw', p2, tree)
 
 (* Converts a k fault tolerant tree into a NetCore policy *)
-let rec policy_from_k_tree pr sw inport first_hop_flag tree topo pathTag tag = 
+let rec policy_from_k_tree pr sw inport first_hop_flag tree topo path_tag tag = 
   Printf.printf "[FaulTolerance.ml] policy_from_k_tree %Ld %s\n%!" sw (tagged_k_tree_to_string tree);
   match tree with
-    | KLeaf_t h -> (match G.get_host_port topo h with
-	| Some (s1,p1) -> assert (s1 = sw); 
-	  Pol(And( Switch sw, And(InPort inport, And(pr, match_tag first_hop_flag pathTag tag))), 
-	      [To(strip_tag, p1)]))
+    | KLeaf_t h -> let Some (s1,p1) = G.get_host_port topo h in
+		   assert (s1 = sw); 
+		   Pol(And( Switch sw, And(InPort inport, And(pr, match_tag first_hop_flag path_tag tag))), 
+		       [To(strip_tag, p1)])
     | KTree_t(sw', children) -> 
       assert (sw = sw');
-      let children_ports = List.map (next_port_from_k_tree pr sw' topo first_hop_flag pathTag) children in
-      let backup = LPar(And( Switch sw', And (InPort inport, And(pr, match_tag first_hop_flag pathTag tag))), 
+      let children_ports = List.map (next_port_from_k_tree sw' topo first_hop_flag path_tag) children in
+      let backup = LPar(And( Switch sw', And( InPort inport, And( pr, match_tag first_hop_flag path_tag tag ))), 
 			children_ports) in
-      let next_hops = List.map (next_hop_from_k_tree pr sw' topo pathTag) children in
+      let next_hops = List.map (next_hop_from_k_tree sw' topo) children in
       let children_pols = List.fold_left 
 	(fun a (sw'', inport,tree) -> 
-	  Par(a, policy_from_k_tree pr sw'' inport false (snd tree) topo pathTag (fst tree))) trivial_pol next_hops in
+	  Par(a, policy_from_k_tree pr sw'' inport false (snd tree) topo path_tag (fst tree))) trivial_pol next_hops in
       Par(backup, children_pols)
 
 let rec compile_ft_regex pred vid regex k topo = 
   let Host srcHost = List.hd regex in
   let ktree = build_k_tree k regex topo in
-  let srcSw,srcPort = (match G.get_host_port topo srcHost with Some (sw,p) -> (sw,p)) in
+  let Some (srcSw,srcPort) = G.get_host_port topo srcHost in
   let genSym = GenSym.create() in
   let tag = GenSym.next_val genSym in
   let tagged_ktree = tag_k_tree ktree tag genSym in
