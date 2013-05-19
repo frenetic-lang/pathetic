@@ -22,19 +22,19 @@ val ( <.> ) : regex -> regex -> regex
 val flatten_reg : regex -> regex list
 val collapse_star : regex list -> regex list
 
-val install_hosts : regex list -> Graph.Graph.graph -> (regex * regex) list
+val install_hosts : regex list -> Graph.Graph.graph -> regex list
 
 val expand_regex_with_match :
   regex list -> Graph.Graph.a -> Graph.Graph.graph -> (regex * regex) list
 
-val expand_path_with_match1 :
-  (regex * regex) list -> Graph.Graph.a -> Graph.Graph.graph -> (regex * regex) list
+(* val expand_path_with_match1 : *)
+(*   (regex * regex) list -> Graph.Graph.a -> Graph.Graph.graph -> (regex * regex) list *)
 
 val expand_path_with_match_bad_links :
-  (regex * regex) list -> Graph.Graph.a -> Graph.Graph.graph -> (Graph.Graph.a * Graph.Graph.a) list -> (regex * regex) list
+  regex list -> Graph.Graph.a -> Graph.Graph.graph -> (Graph.Graph.a * Graph.Graph.a) list -> (regex list * regex list)
 
 val expand_path_with_match :
-  regex list -> Graph.Graph.graph -> (regex * regex) list
+  regex list -> Graph.Graph.graph -> (regex list * regex list)
 
 val compile_regex : regex_policy -> Graph.Graph.graph -> NetCoreFT.policy
 

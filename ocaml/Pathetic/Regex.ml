@@ -82,23 +82,23 @@ let rec install_hosts path topo = match path with
     let Some (s1,_) = G.get_host_port topo h1 in
     let Some (s2,_) = G.get_host_port topo h2 in
     if s1 = s2 then
-      (Host h1, Host h1) :: (Hop s1, Star) :: [(Host h2, Host h2)]
+      Host h1 :: Hop s1 :: [ Host h2 ]
     else
-      (Host h1, Host h1) :: (Hop s1, Star) :: (Star, Star) :: (Hop s2, Star) :: [(Host h2, Host h2)]
+      Host h1 :: Hop s1 :: Star :: Hop s2 :: [ Host h2 ]
   | Host h1 :: Star :: path -> 
     let Some (s1,_) = G.get_host_port topo h1 in
-    (Host h1, Host h1) :: (Hop s1, Star) ::  install_hosts (Star :: path) topo
+    Host h1 :: Hop s1 ::  install_hosts (Star :: path) topo
   | Star :: [Host h1] -> 
     let Some (s1,_) = G.get_host_port topo h1 in
-    (Hop s1, Star) ::  [(Host h1, Host h1)]
-  | h :: path -> (h, h) :: install_hosts path topo
+    Hop s1 ::  [ Host h1 ]
+  | h :: path -> h :: install_hosts path topo
   | [] -> []
 
 let rec star_out_regex regex = match regex with
   | [a] -> [(a, a)]
   | a :: regex -> (a, Star) :: star_out_regex regex
 
-let rec expand_path path topo = match fst (List.split (install_hosts path topo)) with
+let rec expand_path path topo = match install_hosts path topo with
   | Host h1 :: Hop s1 :: path -> Host h1 :: Hop s1 :: expand_path1 path s1 topo
 
 let rec expand_regex_with_match regex hop topo = 
@@ -109,28 +109,26 @@ let rec expand_regex_with_match regex hop topo =
   | [Host h1] -> [(Host h1, Host h1)]
 
 (* Expands a regex into an explicit path starting at hop, storing the "match expansion" along the way *)
-let rec expand_path_with_match1 path hop topo = 
-  Printf.printf "[Regex.ml] expand_path_with_match1 %Ld %s\n%!" hop (String.concat ";" (List.map (fun (a,b) -> 
-    Printf.sprintf "(%s, %s)" (regex_to_string a) (regex_to_string b)) path));
-  match path with
-  | (Star,_) :: (Hop s, a) :: path -> (star_out_path (get_path1 topo hop s) a) @ expand_path_with_match1 path s topo
-  | (Hop s1, a) :: path -> (Hop s1, a) :: expand_path_with_match1 path s1 topo
-  | (Star,_) :: [(Host h1, a)] -> 
-    let Some (s1,_) = G.get_host_port topo h1 in
-    (star_out_path (get_path1 topo hop s1) Star) @  [(Host h1, a)]
-  | [(Host h1, a)] -> [(Host h1, a)]
+(* let rec expand_path_with_match1 path hop topo =  *)
+(*   Printf.printf "[Regex.ml] expand_path_with_match1 %Ld %s\n%!" hop (String.concat ";" (List.map regex_to_string b)) path)); *)
+(*   match path with *)
+(*   | (Star,_) :: (Hop s, a) :: path -> (star_out_path (get_path1 topo hop s) a) @ expand_path_with_match1 path s topo *)
+(*   | (Hop s1, a) :: path -> (Hop s1, a) :: expand_path_with_match1 path s1 topo *)
+(*   | (Star,_) :: [(Host h1, a)] ->  *)
+(*     let Some (s1,_) = G.get_host_port topo h1 in *)
+(*     (star_out_path (get_path1 topo hop s1) Star) @  [(Host h1, a)] *)
+(*   | [(Host h1, a)] -> [(Host h1, a)] *)
 
 let expand_path_with_match_bad_links regex sw topo bad_links =
-  Printf.printf "[Regex.ml] expand_path_with_match_bad_links %Ld %s %s\n%!" sw (String.concat ";" (List.map (fun (a,b) -> 
-    Printf.sprintf "(%s, %s)" (regex_to_string a) (regex_to_string b)) regex)) (String.concat ";" (List.map (fun (a,b) -> 
+  Printf.printf "[Regex.ml] expand_path_with_match_bad_links %Ld %s %s\n%!" sw (String.concat ";" (List.map regex_to_string regex)) (String.concat ";" (List.map (fun (a,b) -> 
     Printf.sprintf "(%Ld,%Ld)" a b) bad_links));
   let new_topo = G.copy topo in
   G.del_links new_topo bad_links;
-  expand_path_with_match1 regex sw new_topo
+  List.split (expand_regex_with_match regex sw new_topo)
 
 
 let rec expand_path_with_match path topo = match install_hosts path topo with
-  | (Host h1, a) :: (Hop s1, b) :: path -> (Host h1, a) :: (Hop s1, b) :: expand_path_with_match1 path s1 topo
+  | Host h1 :: Hop s1 :: path -> List.split ((Host h1, Host h1) :: (Hop s1, Hop s1) :: expand_regex_with_match path s1 topo)
 
   (* Naive compilation: does not guarantee loop-free semantics
      Possible issues:
@@ -141,8 +139,6 @@ let rec expand_path_with_match path topo = match install_hosts path topo with
      1) Second compilation phase that detects repeated nodes and tags packets inbetween such repeats
   *)
 
-let bad_hop_handler s1 s2 sw pt pk = ()
-  (* Printf.printf "Can not forward pkt from %Ld to %Ld\n" s1 s2 *)
  
 let rec compile_path1 pred path topo port = match path with
   | Hop s1 :: Hop s2 :: path -> 

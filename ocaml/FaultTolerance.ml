@@ -26,34 +26,34 @@ let clear_path path = List.map (fun a -> (a,a)) (Pathetic.Regex.collapse_star (L
 
 (* Initial version: no backtracking *)
 (* Build (n - k) backup paths at 'sw' according to spec 'path' avoiding links 'fail_set'. *)
-let rec build_k_children sw path n k fail_set topo =
+let rec build_k_children sw regex n k fail_set topo =
   if k > n then Some [] 
   else
-    let path = expand_path_with_match_bad_links path sw topo fail_set in
+    let path, regex = expand_path_with_match_bad_links regex sw topo fail_set in
     match List.hd path with
-      | (Host h,_) -> Some [KLeaf h]
-      | (Hop new_sw',_) -> 
-	(match build_k_tree_from_path path n k fail_set topo with
+      | Host h -> Some [KLeaf h]
+      | Hop new_sw' -> 
+	(match build_k_tree_from_path path regex n k fail_set topo with
 	  | None -> None
-	  | Some tree -> (match build_k_children sw (clear_path path) n (k + 1) ((sw, new_sw') :: fail_set) topo with
+	  | Some tree -> (match build_k_children sw regex n (k + 1) ((sw, new_sw') :: fail_set) topo with
 	      | None -> None
 	      | Some children -> Some (tree :: children)))
 and
     (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
-    build_k_tree_from_path path n k fail_set topo = 
+    build_k_tree_from_path path regex n k fail_set topo = 
       Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s\n%!" 
-	(String.concat ";" (List.map (fun (a,b) -> 
-	  Printf.sprintf "(%s, %s)" (regex_to_string a) (regex_to_string b)) path));
+	(String.concat ";" (List.map regex_to_string path));
     match path with
-      | (Hop sw, _) :: [(Host h1,_)] -> Some (KTree(sw, [KLeaf h1]))
-      | (Hop sw, a) :: (Hop sw', b) :: path -> 
-	(match build_k_children sw (clear_path ((b, b) :: path)) n k fail_set topo with
+      | Hop sw :: [ Host h1 ] -> Some (KTree(sw, [KLeaf h1]))
+      | Hop sw :: Hop sw' :: path -> 
+	(match build_k_children sw (List.tl path) n k fail_set topo with
 	  | None -> None
 	  | Some children -> Some (KTree(sw, children)))
-      | (Host h, _) :: path -> build_k_tree_from_path path n k fail_set topo
+      | Host h :: path -> build_k_tree_from_path path (List.tl regex) n k fail_set topo
 
 let build_k_tree n regex topo = 
-  match build_k_tree_from_path (expand_path_with_match regex topo) n 0 [] topo with
+  let path, regex = expand_path_with_match regex topo in
+  match build_k_tree_from_path path regex  n 0 [] topo with
     | None -> raise (NoTree "failed to build k-tree")
     | Some tree -> tree
 
