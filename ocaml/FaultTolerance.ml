@@ -26,18 +26,22 @@ let clear_path path = List.map (fun a -> (a,a)) (Pathetic.Regex.collapse_star (L
 
 (* Initial version: no backtracking *)
 (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
+(* back-tracking invariant: returns None if there is no n-k FT tree along 'path' *)
 let rec build_k_tree_from_path path regex n k fail_set topo = 
   Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s\n%!" 
     (String.concat ";" (List.map regex_to_string path));
   match path with
     | Hop sw :: [ Host h1 ] -> Some (KTree(sw, [KLeaf h1]))
     | Hop sw :: Hop sw' :: path -> 
-      (match build_k_children sw (List.tl path) n k fail_set topo with
+      (match build_k_children sw (List.tl regex) n k fail_set topo with
+	(* We haven't made any choices at this point, so we backtrack
+	   up to our parent if we fail *)
 	| None -> None
 	| Some children -> Some (KTree(sw, children)))
     | Host h :: path -> build_k_tree_from_path path (List.tl regex) n k fail_set topo
 and
     (* Build (n - k) backup paths at 'sw' according to 'regex', avoiding links in 'fail_set'. *)
+    (* backtracking invariant: returns None iff there are not n-k FT backup paths at this node *)
     build_k_children sw regex n k fail_set topo =
   if k > n then Some [] 
   else
@@ -46,8 +50,10 @@ and
       | Host h -> Some [KLeaf h]
       | Hop new_sw' -> 
 	(match build_k_tree_from_path path regex n k fail_set topo with
+	  (* If we fail then we need to pick a new path *)
 	  | None -> None
 	  | Some tree -> (match build_k_children sw regex n (k + 1) ((sw, new_sw') :: fail_set) topo with
+	      (* If we fail here, either because we chose a bad ordering, or because we chose a bad path earlier *)
 	      | None -> None
 	      | Some children -> Some (tree :: children)))
 
