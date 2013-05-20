@@ -1,6 +1,7 @@
 true : use_menhir
 true : use_str
 <Pathetic/Regex.cmx> : for-pack(Pathetic)
+<Pathetic/RegexUtils.cmx> : for-pack(Pathetic)
 <*.d.byte> : package(cstruct), package(lwt), package(lwt.unix)
 <*.byte> : package(cstruct), package(lwt), package(lwt.unix)
 <*.native> : package(cstruct), package(lwt), package(lwt.unix)

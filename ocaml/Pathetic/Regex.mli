@@ -7,6 +7,9 @@ type regex =
   | Sequence of regex * regex
   | Union of regex * regex
   | Intersection of regex * regex
+  | Not of regex
+  | Empty
+  | EmptySet
 
 type regex_policy =
     RegPol of NetCoreFT.predicate * regex * int
@@ -18,24 +21,5 @@ val ( <*> ) : regex_policy -> regex_policy -> regex_policy
 val ( && ) : regex -> regex -> regex
 val ( || ) : regex -> regex -> regex
 val ( <.> ) : regex -> regex -> regex
-
-val flatten_reg : regex -> regex list
-val collapse_star : regex list -> regex list
-
-val install_hosts : regex list -> Graph.Graph.graph -> regex list
-
-val expand_regex_with_match :
-  regex list -> Graph.Graph.a -> Graph.Graph.graph -> (regex * regex) list
-
-(* val expand_path_with_match1 : *)
-(*   (regex * regex) list -> Graph.Graph.a -> Graph.Graph.graph -> (regex * regex) list *)
-
-val expand_path_with_match_bad_links :
-  regex list -> Graph.Graph.a -> Graph.Graph.graph -> (Graph.Graph.a * Graph.Graph.a) list -> (regex list * regex list)
-
-val expand_path_with_match :
-  regex list -> Graph.Graph.graph -> (regex list * regex list)
-
-val compile_regex : regex_policy -> Graph.Graph.graph -> NetCoreFT.policy
 
 val regex_to_string : regex -> string

@@ -1,4 +1,5 @@
 open Pathetic.Regex
+open Pathetic.RegexUtils
 open OpenFlowTypes
 open NetCoreFT
 
@@ -22,7 +23,7 @@ let rec k_tree_to_string tree = match tree with
   | KTree(sw, children) -> Printf.sprintf "KTree(%Ld, [ %s ])" sw (String.concat "; " (List.map k_tree_to_string children))
 
 (* Takes a path-regex and deletes the expanded path, replacing it with the original regex *)
-let clear_path path = List.map (fun a -> (a,a)) (Pathetic.Regex.collapse_star (List.map snd path))
+let clear_path path = List.map (fun a -> (a,a)) (Pathetic.RegexUtils.collapse_star (List.map snd path))
 
 (* Initial version: no backtracking *)
 (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
