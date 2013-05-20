@@ -104,8 +104,8 @@ let rec expand_path path topo = match install_hosts path topo with
 let rec expand_regex_with_match regex hop topo = 
   Printf.printf "[Regex.ml] expand_path_with_match %s\n%!" (String.concat ";" (List.map regex_to_string regex));
   match regex with
-  | Star :: Hop s :: path -> star_out_regex (get_path1 topo hop s) @ expand_regex_with_match regex s topo
-  | Hop s1 :: path -> (Hop s1, Hop s1) :: expand_regex_with_match path s1 topo
+  | Star :: Hop s :: regex -> star_out_regex (get_path1 topo hop s) @ expand_regex_with_match regex s topo
+  | Hop s1 :: regex -> (Hop s1, Hop s1) :: expand_regex_with_match regex s1 topo
   | [Host h1] -> [(Host h1, Host h1)]
 
 (* Expands a regex into an explicit path starting at hop, storing the "match expansion" along the way *)
