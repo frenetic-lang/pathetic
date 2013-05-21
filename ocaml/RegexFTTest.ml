@@ -6,6 +6,7 @@ open NetCoreFT
 open Pathetic.Regex
 module H = Hashtbl
 module G = Graph.Graph
+module N = Graph
 
 module D = DiamondTopo
 
@@ -31,8 +32,8 @@ module Routing = struct
     (a <<< 24) ||| (b <<< 16) ||| (c <<< 8) ||| d
 
   let make_host_ip i = ints_to_ipv4 (10,0,0,i)
-  let h1 = 1
-  let h2 = 2
+  let h1 = N.Host 1
+  let h2 = N.Host 2
 
   let s1 = Int64.of_int 1
   let s2 = Int64.of_int 2
@@ -41,8 +42,8 @@ module Routing = struct
 
   let from_to i j = And (SrcIP (make_host_ip i), DstIP (make_host_ip j))
 			   (* (DlType 0x800)) *)
-  let make_policy = RegUnion (RegPol (from_to 1 2, (Sequence (Host h1, Sequence (Star, Host h2))), 1),
-			    RegPol (from_to 2 1, (Sequence (Host h2, Sequence (Star, Host h1))), 1))
+  let make_policy = RegUnion (RegPol (from_to 1 2, (Sequence (Const h1, Sequence (Star, Const h2))), 1),
+			    RegPol (from_to 2 1, (Sequence (Const h2, Sequence (Star, Const h1))), 1))
 
   let desugar_group_htbl tbl =
     Hashtbl.fold (fun sw swTbl acc -> 

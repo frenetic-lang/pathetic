@@ -1,8 +1,7 @@
 (* type graph = (switchId * switchId * int) list *)
 
 type regex =
-    Hop of OpenFlow0x01Types.switchId
-  | Host of int
+    Const of Graph.node
   | Star
   | Sequence of regex * regex
   | Union of regex * regex

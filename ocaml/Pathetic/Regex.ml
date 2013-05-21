@@ -1,12 +1,12 @@
 open OpenFlow0x01Types
 open NetCoreFT
+module G = Graph
 
 (* type graph = (switchId * switchId * int) list *)
 
 
 type regex =
-  | Hop of switchId
-  | Host of int
+  | Const of G.node
   | Star
   | Sequence of regex * regex
   | Union of regex * regex
@@ -28,8 +28,8 @@ let (||) a b = Union(a,b)
 let (<.>) a b = Sequence(a,b)
 
 let rec regex_to_string reg = match reg with
-  | Hop sw -> Printf.sprintf "(Hop %Ld)" sw
-  | Host h -> Printf.sprintf "(Host %d)" h
+  | Const(G.Switch sw) -> Printf.sprintf "(Hop %Ld)" sw
+  | Const(G.Host h) -> Printf.sprintf "(Host %d)" h
   | Star -> "*"
   | Sequence(reg1, reg2) -> Printf.sprintf "( %s <.> %s )" (regex_to_string reg1) (regex_to_string reg2)
   | Union(reg1, reg2) -> Printf.sprintf "( %s <||> %s )" (regex_to_string reg1) (regex_to_string reg2)
@@ -56,8 +56,7 @@ let reduce_re re = match re with
 
 let rec nu re = match re with
   | Empty -> Empty
-  | Hop _ -> EmptySet
-  | Host _ -> EmptySet
+  | Const _ -> EmptySet
   | EmptySet -> EmptySet
   | Sequence(a,b) -> reduce_re (nu a && nu b)
   | Union(a,b) -> reduce_re (nu a || nu b)
@@ -70,8 +69,7 @@ let rec nu re = match re with
 let rec deriv sym re = match re with
   | Empty -> EmptySet
   | EmptySet -> EmptySet
-  | Host a -> if sym = Host a then Empty else EmptySet
-  | Hop a -> if sym = Hop a then Empty else EmptySet
+  | Const c -> if sym = Const c then Empty else EmptySet
   | Sequence(a,b) -> ((deriv sym a) <.> b) || ((nu a) <.> deriv sym b)
   | Star -> Star
   | Union(a,b) -> (deriv sym a) || (deriv sym b)
