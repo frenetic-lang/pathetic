@@ -1,8 +1,6 @@
 open OpenFlow0x01Types
 open NetCoreFT
 
-module G = Graph.Graph
-
 (* type graph = (switchId * switchId * int) list *)
 
 

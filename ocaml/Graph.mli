@@ -24,6 +24,7 @@ sig
   val del_edges : graph -> (a*b) list -> unit
   val del_link : graph -> a -> a -> unit
   val del_links : graph -> (a*a) list -> unit
+  val del_switch : graph -> a -> unit
   val copy : graph -> graph
   val to_string : graph -> string
   exception NoPath of string*string

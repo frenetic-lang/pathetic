@@ -32,6 +32,7 @@ sig
   val del_edges : graph -> (a*b) list -> unit
   val del_link : graph -> a -> a -> unit
   val del_links : graph -> (a*a) list -> unit
+  val del_switch : graph -> a -> unit
   val copy : graph -> graph
   val to_string : graph -> string
   exception NoPath of string*string
@@ -67,7 +68,6 @@ module Graph : GRAPH =
     let del_edge (graph, _) sw1 pt1 = try H.remove (H.find graph sw1) pt1 with _ -> raise (NotFound(Printf.sprintf "Can't find %Ld to del_edge %ld\n" sw1 pt1))
     let del_edges graph edges = List.iter (fun (a,b) -> del_edge graph a b) edges
 
-
     let create () = (H.create 5, H.create 5)
 
     let get_nbrs' graph sw = 
@@ -75,6 +75,13 @@ module Graph : GRAPH =
       with _ -> []
 
     let get_nbrs (graph, _) sw = get_nbrs' graph sw
+    let get_nbr_links (graph,_) sw = try (H.fold (fun pt1 (sw2, pt2) acc -> (sw2, pt2) :: acc) (H.find graph sw) []) 
+      with _ -> []
+
+    (* Ignore hosts attached to this switch for the moment *)
+    let del_switch graph sw = let nbrs = get_nbr_links graph sw in
+			      del_edges graph nbrs;
+			      H.remove (fst graph) sw
 
     let copy (graph1, graph2) = let newgraph1 = H.create (H.length graph1) in
 				let () = H.iter (fun k v -> H.add newgraph1 k (H.copy v)) graph1 in

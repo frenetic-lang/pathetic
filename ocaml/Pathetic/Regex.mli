@@ -23,3 +23,6 @@ val ( || ) : regex -> regex -> regex
 val ( <.> ) : regex -> regex -> regex
 
 val regex_to_string : regex -> string
+val nu : regex -> regex
+val match_path : regex -> regex list -> bool
+val deriv : regex -> regex -> regex
