@@ -97,6 +97,15 @@ let rec nu re =
   (* Printf.printf "returned %s\n" (regex_to_string foo); *)
   foo
 
+let rec is_empty re = match re with
+  | Empty -> false
+  | EmptySet -> true
+  | Const _ -> false
+  | Sequence(a,b) -> is_empty(a) or is_empty(b)
+  | Union(a,b) -> is_empty(a) & is_empty(b)
+  | Star -> false
+  | Not a -> not (is_empty a)
+
 let rec deriv sym re = 
   let return =  match re with
     | Empty -> EmptySet
@@ -108,12 +117,21 @@ let rec deriv sym re =
     | Intersection(a,b) -> reduce_re ((deriv sym a) && (deriv sym b))
     | Not a -> reduce_re (Not (deriv sym a))
   in
-  Printf.printf "deriv %s %s\n" (regex_to_string sym) (regex_to_string re);
-  Printf.printf "returned %s\n" (regex_to_string return);
+  (* Printf.printf "deriv %s %s\n" (regex_to_string sym) (regex_to_string re); *)
+  (* Printf.printf "returned %s\n" (regex_to_string return); *)
   return
 
 let rec deriv_path path re = List.fold_left (fun x y -> deriv y x) re (List.rev path)
 
-let rec match_path re path = match path with
-  | [] -> nu re = Empty
-  | a :: w -> match_path (deriv a re) w
+let rec match_path re path = 
+  let return = match path with
+    | [] -> nu re = Empty
+    | a :: w -> match_path (deriv a re) w
+  in
+  Printf.printf "match_path %s %s\n" (regex_to_string re) 
+    (String.concat ";" (List.map regex_to_string path));
+  Printf.printf "returned %B\n" return;
+  return 
+
+
+

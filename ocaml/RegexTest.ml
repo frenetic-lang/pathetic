@@ -5,16 +5,18 @@ open NetCoreFT
 open FaultTolerance
 
 module G = Graph.Graph
+module N = Graph
 
 module Routing = struct
 
-  let s101 = Int64.of_int 1
-  let s102 = Int64.of_int 2
-  let s103 = Int64.of_int 3
-  let s104 = Int64.of_int 4
-  let h1 = 1
-  let h2 = 2
+  let s101 = N.Switch (Int64.of_int 1)
+  let s102 = N.Switch (Int64.of_int 2)
+  let s103 = N.Switch (Int64.of_int 3)
+  let s104 = N.Switch (Int64.of_int 4)
+  let h1 = N.Host 1
+  let h2 = N.Host 2
   open Pathetic.Regex
+  open Pathetic.RegexUtils
     (* Simple linear topo 101 <-> 102 <-> 103 *)
   (* let make_topo () =  *)
   (*   let topo = G.create () in *)
@@ -33,9 +35,9 @@ module Routing = struct
 
   let (policy, push) = Lwt_stream.create ()
     
-  let test_regex = RegPol (All, (Host h1 <.> Star <.> Host h2), 0) 
+  let test_regex = RegPol (All, (Const h1 <.> Star <.> Const h2), 0) 
     <+>
-      RegPol (All, (Host h2 <.> Star <.> Host h1), 0)
+      RegPol (All, (Const h2 <.> Star <.> Const h1), 0)
 
   (** Composes learning and routing policies, which together form
       mac-learning. *)      
