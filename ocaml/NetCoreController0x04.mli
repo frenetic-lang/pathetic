@@ -2,11 +2,9 @@ open Classifier
 open NetworkPacket
 open ControllerInterface0x04
 open Datatypes
-open List0
 open OpenFlowTypes
 open NetCoreCompiler0x04
 open NetCoreEval0x04
-open Types
 open WordInterface
 
 val prio_rec :

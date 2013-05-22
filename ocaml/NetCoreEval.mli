@@ -1,8 +1,6 @@
 open Datatypes
-open List0
 open NetworkPacket
 open OpenFlow0x01Types
-open Types
 open WordInterface
 
 type id =

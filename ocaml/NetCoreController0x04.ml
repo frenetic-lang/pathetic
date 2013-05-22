@@ -1,12 +1,10 @@
 open Classifier
 open ControllerInterface0x04
-open Datatypes
 open NetCoreEval
 open NetCoreEval0x04
 open NetCoreCompiler0x04
 open NetworkPacket
 open OpenFlowTypes
-open Types
 open WordInterface
 
 (** val prio_rec :
@@ -70,14 +68,14 @@ let translate_action in_port = function
 | Forward (mods, p) ->
   (match p with
    | PhysicalPort pp ->
-     app (modification_to_openflow0x01 mods)
+     List.append (modification_to_openflow0x01 mods)
        ((match in_port with
          | Some pp' ->
            if pp' = pp
            then Output InPort
            else Output (PhysicalPort pp)
          | None -> Output (PhysicalPort pp))::[])
-   | _ -> app (modification_to_openflow0x01 mods) ((Output p)::[]))
+   | _ -> List.append (modification_to_openflow0x01 mods) ((Output p)::[]))
 | NetCoreEval0x04.Group gid -> [Group gid]
 | ActGetPkt x -> (Output (Controller Word16.max_value))::[]
 
@@ -128,7 +126,7 @@ let pattern_to_oxm_match pat =
 let to_flow_mod prio pat act0 tableId =
   let ofMatch,inport = pattern_to_oxm_match pat in
   { mfTable_id = tableId; mfCommand = AddFlow; mfOfp_match = ofMatch; mfPriority = prio; 
-    mfInstructions = [ApplyActions (concat_map (translate_action inport) act0)]; 
+    mfInstructions = [ApplyActions (List.concat (List.map (translate_action inport) act0))]; 
     mfCookie = val_to_mask (Int64.of_int 0); mfIdle_timeout = Permanent; 
     mfHard_timeout = Permanent; mfOut_group = None;
   mfFlags = {  fmf_send_flow_rem = false; 
@@ -157,7 +155,7 @@ let to_group_mod gid gtype bkts =
   AddGroup (gtype, gid, List.map (fun acts -> {bu_weight = 0;
 					  bu_watch_port = get_watch_port acts;
 					  bu_watch_group = None;
-					  bu_actions = (concat_map (translate_action None) acts)}) 
+					  bu_actions = (List.concat (List.map (translate_action None) acts))}) 
     bkts)
 
 (** val flow_mods_of_classifier : act list coq_Classifier -> flowMod list **)
@@ -277,9 +275,9 @@ module Make =
   let send_output = function
   | OutAct (swId, [], pkt, bufOrBytes) -> Monad.ret ()
   | OutAct (swId, acts, pkt, bufOrBytes) ->
-    let (buf, pkt) = (match bufOrBytes with Coq_inl buf -> (Some buf, None) | _ -> (None, Some pkt)) in
+    let (buf, pkt) = (match bufOrBytes with Datatypes.Coq_inl buf -> (Some buf, None) | _ -> (None, Some pkt)) in
     Monad.send swId Word32.zero (PacketOutMsg { po_buffer_id =
-      buf; po_in_port = Controller 0; po_pkt = pkt; po_actions = concat_map (translate_action None) acts })
+      buf; po_in_port = Controller 0; po_pkt = pkt; po_actions = List.concat (List.map (translate_action None) acts) })
   | OutGetPkt (x, switchId0, portId0, packet0) ->
     Monad.handle_get_packet x switchId0 portId0 packet0
   | OutNothing -> Monad.ret ()

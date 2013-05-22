@@ -1,5 +1,3 @@
-open Types
-
 type 'a coq_Wildcard =
 | WildcardExact of 'a
 | WildcardAll

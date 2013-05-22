@@ -1,4 +1,3 @@
-open Datatypes
 open NetworkPacket
 open OpenFlowTypes
 
@@ -80,7 +79,7 @@ type input =
 | InPkt of switchId * portId * packet * bufferId option
 
 type output =
-| OutAct of switchId * act list * packet * (bufferId, bytes) sum
+| OutAct of switchId * act list * packet * (bufferId, bytes) Datatypes.sum
 | OutGetPkt of id * switchId * portId * packet
 | OutNothing
 
@@ -196,7 +195,7 @@ let rec match_pred pr sw pt pk =
   | PrOnSwitch sw' -> if sw == sw' then true else false
   | PrOr (p1, p2) -> (||) (match_pred p1 sw pt pk) (match_pred p2 sw pt pk)
   | PrAnd (p1, p2) -> (&&) (match_pred p1 sw pt pk) (match_pred p2 sw pt pk)
-  | PrNot p' -> negb (match_pred p' sw pt pk)
+  | PrNot p' -> not (match_pred p' sw pt pk)
   | PrAll -> true
   | PrNone -> false
 
@@ -206,8 +205,8 @@ let eval_action inp = function
   let InPkt (sw, p, pk, buf) = inp in
   OutAct (sw, [Forward (mods, pp)], pk,
 	  (match buf with
-	    | Some b -> Coq_inl b
-	    | None -> Coq_inr (Packet_Parser.serialize_packet pk)))
+	    | Some b -> Datatypes.Coq_inl b
+	    | None -> Datatypes.Coq_inr (Packet_Parser.serialize_packet pk)))
 | ActGetPkt x ->
   let InPkt (sw, pt, pk, buf) = inp in OutGetPkt (x, sw, pt, pk)
 
@@ -220,7 +219,7 @@ let rec classify p inp =
   | PoAtom (pr, actions) ->
     let InPkt (sw, pt, pk, buf) = inp in
     if match_pred pr sw (Int32.to_int pt) pk then List.map (eval_action inp) actions else []
-  | PoUnion (p1, p2) -> app (classify p1 inp) (classify p2 inp)
+  | PoUnion (p1, p2) -> List.append (classify p1 inp) (classify p2 inp)
   | PoOpt (pr, actions) ->
     let InPkt (sw, pt, pk, buf) = inp in
     if match_pred pr sw (Int32.to_int pt) pk then [(eval_action inp (List.hd actions))] else []

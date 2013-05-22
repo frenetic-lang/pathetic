@@ -1,14 +1,19 @@
-open Datatypes
 open NetworkPacket
 open OpenFlow0x01Types
-open Types
 open WordInterface
 
-let rec partition f = function
-| [] -> ([], [])
-| x :: tl0 ->
-  let (g, d) = partition f tl0 in
-  if f x then ((x :: g), d) else (g, (x :: d))
+(** val filter_map_body :
+    ('a1 -> 'a2 option) -> 'a1 -> 'a2 list -> 'a2 list **)
+
+let filter_map_body f a bs =
+  match f a with
+  | Some b -> b :: bs
+  | None -> bs
+
+(** val filter_map : ('a1 -> 'a2 option) -> 'a1 list -> 'a2 list **)
+
+let filter_map f lst =
+  List.fold_right (filter_map_body f) lst []
 
 type id =
   int
@@ -118,7 +123,7 @@ let action_mask a =
 let par_action a1 a2 =
   let { modifications = m1; toPorts = p1; queries = q1 } = a1 in
   let { modifications = m2; toPorts = p2; queries = q2 } = a2 in
-  { modifications = m1; toPorts = (app p1 p2); queries = (app q1 q2) }
+  { modifications = m1; toPorts = (List.append p1 p2); queries = (List.append q1 q2) }
 
 (** val override : 'a1 option -> 'a1 option -> 'a1 option **)
 
@@ -149,7 +154,7 @@ let seq_mod m1 m2 =
 let seq_action a1 a2 =
   let { modifications = m1; toPorts = p1; queries = q1 } = a1 in
   let { modifications = m2; toPorts = p2; queries = q2 } = a2 in
-  { modifications = (seq_mod m1 m2); toPorts = p2; queries = (app q1 q2) }
+  { modifications = (seq_mod m1 m2); toPorts = p2; queries = (List.append q1 q2) }
 
 type pred =
 | PrHdr of Pattern.pattern
@@ -169,7 +174,7 @@ type input =
 | InPkt of switchId * portId * packet * bufferId option
 
 type output =
-| OutPkt of switchId * pseudoPort * packet * (bufferId, bytes) sum
+| OutPkt of switchId * pseudoPort * packet * (bufferId, bytes) Datatypes.sum
 | OutGetPkt of id * switchId * portId * packet
 | OutNothing
 
@@ -184,10 +189,10 @@ let is_OutPkt = function
 let rec match_pred pr sw pt pk =
   match pr with
   | PrHdr pat -> Pattern.Pattern.match_packet pt pk pat
-  | PrOnSwitch sw' -> if Word64.eq_dec sw sw' then true else false
+  | PrOnSwitch sw' -> if sw = sw' then true else false
   | PrOr (p1, p2) -> (||) (match_pred p1 sw pt pk) (match_pred p2 sw pt pk)
   | PrAnd (p1, p2) -> (&&) (match_pred p1 sw pt pk) (match_pred p2 sw pt pk)
-  | PrNot p' -> negb (match_pred p' sw pt pk)
+  | PrNot p' -> not (match_pred p' sw pt pk)
   | PrAll -> true
   | PrNone -> false
 
@@ -236,8 +241,8 @@ let outp_to_inp = function
   (match p with
    | PhysicalPort pt ->
      (match s with
-      | Coq_inl bufId -> Some (InPkt (sw, pt, pk, (Some bufId)))
-      | Coq_inr b -> None)
+      | Datatypes.Coq_inl bufId -> Some (InPkt (sw, pt, pk, (Some bufId)))
+      | Datatypes.Coq_inr b -> None)
    | _ -> None)
 | _ -> None
 
@@ -246,11 +251,11 @@ let outp_to_inp = function
 let eval_action inp act0 =
   let { modifications = mods; toPorts = ports; queries = queries0 } = act0 in
   let InPkt (sw, pt, pk, buf) = inp in
-  app
+  List.append
     (List.map (fun pt0 -> OutPkt (sw, pt0, (modify_pkt mods pk),
       (match buf with
-       | Some b -> Coq_inl b
-       | None -> Coq_inr (serialize_pkt (modify_pkt mods pk))))) ports)
+       | Some b -> Datatypes.Coq_inl b
+       | None -> Datatypes.Coq_inr (serialize_pkt (modify_pkt mods pk))))) ports)
     (List.map (fun qid -> OutGetPkt (qid, sw, pt, pk)) queries0)
 
 (** val classify : pol -> input -> output list **)
@@ -261,8 +266,8 @@ let rec classify p inp =
     let InPkt (sw, pt, pk, buf) = inp in
     eval_action inp
       (if match_pred pr sw pt pk then actions else empty_action)
-  | PoUnion (p1, p2) -> app (classify p1 inp) (classify p2 inp)
+  | PoUnion (p1, p2) -> List.append (classify p1 inp) (classify p2 inp)
   | PoSeq (p1, p2) ->
-    let (outPkts1, queries1) = partition is_OutPkt (classify p1 inp) in
-    app queries1 (concat_map (classify p2) (filter_map outp_to_inp outPkts1))
+    let (outPkts1, queries1) = List.partition is_OutPkt (classify p1 inp) in
+    List.append queries1 (List.concat (List.map (classify p2) (filter_map outp_to_inp outPkts1)))
 

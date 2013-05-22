@@ -1,4 +1,3 @@
-open Datatypes
 open NetworkPacket
 (* open Peano *)
 
@@ -30,14 +29,14 @@ let inter_entry f cl = function
     (Pattern.Pattern.pat * 'a2) list **)
 
 let inter f cl1 cl2 =
-  List.fold_right (fun v acc -> app (inter_entry f cl2 v) acc) cl1 []
+  List.fold_right (fun v acc -> List.append (inter_entry f cl2 v) acc) cl1 []
 
 (** val union :
     ('a1 -> 'a1 -> 'a1) -> 'a1 coq_Classifier -> 'a1 coq_Classifier ->
     (Pattern.Pattern.pat * 'a1) list **)
 
 let union f cl1 cl2 =
-  app (inter f cl1 cl2) (app cl1 cl2)
+  List.append (inter f cl1 cl2) (List.append cl1 cl2)
 
 (** val elim_shadowed_helper :
     'a1 coq_Classifier -> 'a1 coq_Classifier -> 'a1 coq_Classifier **)
@@ -49,7 +48,7 @@ let rec elim_shadowed_helper prefix = function
   if List.exists (fun entry ->
        let (pat', act0) = entry in Pattern.Pattern.beq pat0 pat') prefix
   then elim_shadowed_helper prefix cf'
-  else elim_shadowed_helper (app prefix ((pat0, act) :: [])) cf'
+  else elim_shadowed_helper (List.append prefix ((pat0, act) :: [])) cf'
 
 (** val elim_shadowed : 'a1 coq_Classifier -> 'a1 coq_Classifier **)
 
@@ -88,6 +87,6 @@ let sequence_helper mask0 seq_action p1 a1 tbl2 =
 
 let sequence mask0 seq_action tbl1 tbl2 =
   List.fold_right (fun x acc ->
-    let (p1, a1) = x in app (sequence_helper mask0 seq_action p1 a1 tbl2) acc)
+    let (p1, a1) = x in List.append (sequence_helper mask0 seq_action p1 a1 tbl2) acc)
      tbl1 []
 

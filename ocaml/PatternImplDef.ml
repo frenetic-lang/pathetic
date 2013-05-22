@@ -1,4 +1,3 @@
-open Datatypes
 open NetworkPacket
 open OpenFlow0x01Types
 open WordInterface
@@ -281,7 +280,7 @@ let exact_pattern pk pt =
 (** val match_packet : Word16.t -> packet -> pattern -> bool **)
 
 let match_packet pt pk pat =
-  negb (is_empty (inter (exact_pattern pk pt) pat))
+  not (is_empty (inter (exact_pattern pk pt) pat))
 
 (** val is_exact : pattern -> bool **)
 

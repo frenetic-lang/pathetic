@@ -1,11 +1,11 @@
-
 open List
-open Datatypes
 open Classifier
-open Types
 open NetCoreEval0x04
 
 let __ = let rec f _ = Obj.repr f in Obj.repr f
+
+let second f = function
+| (a, b) -> (a, (f b))
 
 let rec compile_pred opt pr sw =
   match pr with
@@ -18,7 +18,7 @@ let rec compile_pred opt pr sw =
     opt (inter (&&) (compile_pred opt pr1 sw) (compile_pred opt pr2 sw))
   | PrNot pr' ->
     opt
-      (map (second negb)
+      (map (second not)
          ((compile_pred opt pr' sw) @ [(Pattern.Pattern.all, false)]))
   | PrAll -> [(Pattern.Pattern.all, true)]
   | PrNone -> []
@@ -71,7 +71,7 @@ let rec strip_empty_rules = function
 
 (** val no_opt : 'a1 coq_Classifier -> 'a1 coq_Classifier **)
 
-let no_opt x = id x
+let no_opt = fun x -> x
 
 (** val compile_no_opt : pol -> switchId -> act list coq_Classifier **)
 
