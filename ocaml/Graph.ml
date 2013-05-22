@@ -74,10 +74,17 @@ module Graph : GRAPH =
     let get_nodes graph = H.fold (fun k _ acc -> k :: acc) graph []
 
     let port_tbl_to_string portTbl =
-      String.concat ";\n\t\t" (H.fold (fun port (sw',port') acc -> (Printf.sprintf "%ld -> (%s,%ld)" port (node_to_string sw') port') :: acc) portTbl [])
+      String.concat ";\n\t\t" (H.fold (fun port (sw',port') acc -> (Printf.sprintf "%ld -> (%s,%ld)" 
+								      port 
+								      (node_to_string sw') 
+								      port') :: acc) 
+				 portTbl [])
 
     let to_string graph =
-      String.concat ";\n\t" (H.fold (fun sw portTbl acc -> (Printf.sprintf "%s -> {%s}" (node_to_string sw) (port_tbl_to_string portTbl)) :: acc) graph [])
+      String.concat ";\n\t" (H.fold (fun sw portTbl acc -> (Printf.sprintf "%s -> {%s}" 
+							      (node_to_string sw) 
+							      (port_tbl_to_string portTbl)) :: acc) 
+			       graph [])
     let add_node graph (sw : a) = H.add graph sw (H.create 5)
     let add_switch graph sw = add_node graph (Switch sw)
     let add_host graph h = add_node graph (Host h)
@@ -88,10 +95,14 @@ module Graph : GRAPH =
 		       foo) in
       H.add swTbl pt1 (sw2, pt2) 
 
-    let add_host_edge graph h sw pt = add_edge graph h (Int32.of_int 0) sw pt; 
+    let add_host_edge graph h sw pt = 
+      add_edge graph h (Int32.of_int 0) sw pt; 
       add_edge graph sw pt h (Int32.of_int 0)
 
-    let del_edge graph sw1 pt1 = try H.remove (H.find graph sw1) pt1 with _ -> raise (NotFound(Printf.sprintf "Can't find %s to del_edge %ld\n" (node_to_string sw1) pt1))
+    let del_edge graph sw1 pt1 = 
+      try H.remove (H.find graph sw1) pt1 with 
+	  _ -> raise (NotFound(Printf.sprintf "Can't find %s to del_edge %ld\n" (node_to_string sw1) pt1))
+
     let del_edges graph edges = List.iter (fun (a,b) -> del_edge graph a b) edges
 
     let create () = H.create 5
@@ -100,20 +111,22 @@ module Graph : GRAPH =
       try (H.fold (fun pt1 (sw2, pt2) acc -> sw2 :: acc) (H.find graph sw) []) 
       with _ -> []
 
-    let get_nbr_links graph sw = try (H.fold (fun pt1 (sw2, pt2) acc -> (sw2, pt2) :: acc) (H.find graph sw) []) 
+    let get_nbr_links graph sw = 
+      try (H.fold (fun pt1 (sw2, pt2) acc -> (sw2, pt2) :: acc) (H.find graph sw) []) 
       with _ -> []
 
     let copy graph = let newgraph = H.create (H.length graph) in
-		     let () = H.iter (fun k v -> H.add newgraph k (H.copy v)) graph in
+		     H.iter (fun k v -> H.add newgraph k (H.copy v)) graph;
 		     newgraph
 
     let rec bfs' target graph queue =
       let (sw, path) = (Q.take queue) in
       match sw = target with
 	| true -> path
-	| false -> let () = List.iter (fun x -> Q.add (x, x :: path) queue) (get_nbrs graph sw); 
-		     H.remove graph sw in
-		   bfs' target graph queue
+	| false -> 
+	  List.iter (fun x -> Q.add (x, x :: path) queue) (get_nbrs graph sw); 
+	  H.remove graph sw;
+	  bfs' target graph queue
 
     let bfs graph src dst = 
       let q = Queue.create () in
@@ -128,19 +141,24 @@ module Graph : GRAPH =
 	  raise (NoPath(s1,s2))
 
     let get_ports topo s1 s2 = 
-      let () = Printf.printf "get_ports %s %s\n" (node_to_string s1) (node_to_string s2) in
-      let s1Tbl = try (H.find topo s1) with Not_found -> raise (NotFound(Printf.sprintf "Can't find %s to get_ports to %s\n" (node_to_string s1) (node_to_string s2))) in
+      Printf.printf "get_ports %s %s\n" (node_to_string s1) (node_to_string s2);
+      let s1Tbl = try (H.find topo s1) with 
+	  Not_found -> raise (NotFound(Printf.sprintf "Can't find %s to get_ports to %s\n" 
+					 (node_to_string s1) (node_to_string s2))) in
       let unwrap (Some foo) = foo in
       try unwrap (H.fold (fun pt (sw, pt') acc -> if sw = s2 then Some (pt, pt') else acc) s1Tbl None) 
-      with _ -> raise (NotFound(Printf.sprintf "Can't find ports to %s from %s\n" (node_to_string s2) (node_to_string s1)))
+      with _ -> raise (NotFound(Printf.sprintf "Can't find ports to %s from %s\n" 
+				  (node_to_string s2) (node_to_string s1)))
 
-    let del_link graph sw1 sw2 = let p1,p2 = get_ports graph sw1 sw2 in
-				 del_edge graph sw1 p1
+    let del_link graph sw1 sw2 = 
+      let p1,p2 = get_ports graph sw1 sw2 in
+      del_edge graph sw1 p1
     let del_links graph edges = List.iter (fun (a,b) -> del_link graph a b) edges
 
-    let del_node graph sw = let nbrs = get_nbrs graph sw in
-			      try List.iter (fun a -> del_link graph a sw; del_link graph sw a) nbrs with _ -> ();
-			      H.remove graph sw
+    let del_node graph sw = 
+      let nbrs = get_nbrs graph sw in
+      try List.iter (fun a -> del_link graph a sw; del_link graph sw a) nbrs with _ -> ();
+	H.remove graph sw
 
 
     let next_hop topo sw p = 

@@ -151,9 +151,9 @@ let rec policy_from_k_tree' inport tree topo path_tag tag =
       trivial_pol
     | KTree_t(sw', children) -> 
       let N.Switch sw = sw' in
-      let children_ports = List.map (next_port_from_k_tree sw' topo path_tag) children in
+      let children_actions = List.map (next_port_from_k_tree sw' topo path_tag) children in
       let backup = LPar(And( Switch sw, And( InPort inport, match_tag path_tag tag )), 
-			children_ports) in
+			children_actions) in
       let next_hops = List.map (next_hop_from_k_tree sw' topo) children in
       let children_pols = List.fold_left 
 	(fun a (sw'', inport,tree) -> 
