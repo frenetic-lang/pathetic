@@ -145,12 +145,10 @@ let next_hop_from_k_tree sw topo tree =
 
 (* Converts a k fault tolerant tree into a NetCore policy *)
 let rec policy_from_k_tree' inport tree topo path_tag tag = 
-  Printf.printf "[FaulTolerance.ml] policy_from_k_tree %ld %s\n%!" inport (tagged_k_tree_to_string tree);
+  Printf.printf "[FaulTolerance.ml] policy_from_k_tree' %ld %s\n%!" inport (tagged_k_tree_to_string tree);
   match tree with
-    | KLeaf_t h -> let N.Switch sw = G.next_hop topo h inport in
-		   let (_,p1) = G.get_ports topo h (N.Switch sw) in
-		   Pol(And( Switch sw, match_tag path_tag tag), 
-		       [To(strip_tag, p1)])
+    | KLeaf_t h -> 
+      trivial_pol
     | KTree_t(sw', children) -> 
       let N.Switch sw = sw' in
       let children_ports = List.map (next_port_from_k_tree sw' topo path_tag) children in
@@ -162,13 +160,22 @@ let rec policy_from_k_tree' inport tree topo path_tag tag =
 	  Par(a, policy_from_k_tree' inport (snd tree) topo path_tag (fst tree))) trivial_pol next_hops in
       Par(backup, children_pols)
 
+let next_port_from_k_tree_root sw topo pathTag tree = 
+  match tree with
+  | (tag, KLeaf_t host) -> 
+    let (_,p1) = G.get_ports topo host sw in
+    To(strip_tag, p1)
+  | (tag, KTree_t (sw', _)) -> 
+    let p1,p2 = G.get_ports topo sw sw' in
+    To(stamp_path_tag pathTag tag, p1)
+
 let policy_from_k_tree pr tree topo path_tag tag =  
   Printf.printf "[FaulTolerance.ml] policy_from_k_tree %s\n%!" (tagged_k_tree_to_string tree);
   match tree with
     | KRoot_t(N.Host h, KTree_t(N.Switch sw, children)) -> 
       let sw' = N.Switch sw in
       let _,inport = G.get_ports topo (N.Host h) sw' in
-      let children_ports = List.map (next_port_from_k_tree sw' topo path_tag) children in
+      let children_ports = List.map (next_port_from_k_tree_root sw' topo path_tag) children in
       let backup = LPar(And( Switch sw, And( InPort inport, pr)), 
 			children_ports) in
       let next_hops = List.map (next_hop_from_k_tree (N.Switch sw) topo) children in
