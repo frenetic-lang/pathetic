@@ -180,8 +180,8 @@ let policy_from_k_tree pr tree topo path_tag tag =
 			children_ports) in
       let next_hops = List.map (next_hop_from_k_tree (N.Switch sw) topo) children in
       let children_pols = List.fold_left 
-	(fun a (sw'', inport,tree) -> 
-	  Par(a, policy_from_k_tree' inport (snd tree) topo path_tag (fst tree))) trivial_pol next_hops in
+	(fun a (sw'', inport,treeTag) -> 
+	  Par(a, policy_from_k_tree' inport (snd treeTag) topo path_tag (fst treeTag))) trivial_pol next_hops in
       Par(backup, children_pols)
 
 

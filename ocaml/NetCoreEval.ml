@@ -9,16 +9,6 @@ type id =
   int
   (* singleton inductive, whose constructor was MkId *)
 
-(** val id_rect : (int -> 'a1) -> id -> 'a1 **)
-
-let id_rect f i =
-  f i
-
-(** val id_rec : (int -> 'a1) -> id -> 'a1 **)
-
-let id_rec f i =
-  f i
-
 type modification = { modifyDlSrc : dlAddr option;
                       modifyDlDst : dlAddr option;
                       modifyDlVlan : dlVlan option option;
@@ -28,30 +18,6 @@ type modification = { modifyDlSrc : dlAddr option;
                       modifyNwTos : nwTos option;
                       modifyTpSrc : tpPort option;
                       modifyTpDst : tpPort option }
-
-(** val modification_rect :
-    (dlAddr option -> dlAddr option -> dlVlan option option -> dlVlanPcp
-    option -> nwAddr option -> nwAddr option -> nwTos option -> tpPort option
-    -> tpPort option -> 'a1) -> modification -> 'a1 **)
-
-let modification_rect f m =
-  let { modifyDlSrc = x; modifyDlDst = x0; modifyDlVlan = x1;
-    modifyDlVlanPcp = x2; modifyNwSrc = x3; modifyNwDst = x4; modifyNwTos =
-    x5; modifyTpSrc = x6; modifyTpDst = x7 } = m
-  in
-  f x x0 x1 x2 x3 x4 x5 x6 x7
-
-(** val modification_rec :
-    (dlAddr option -> dlAddr option -> dlVlan option option -> dlVlanPcp
-    option -> nwAddr option -> nwAddr option -> nwTos option -> tpPort option
-    -> tpPort option -> 'a1) -> modification -> 'a1 **)
-
-let modification_rec f m =
-  let { modifyDlSrc = x; modifyDlDst = x0; modifyDlVlan = x1;
-    modifyDlVlanPcp = x2; modifyNwSrc = x3; modifyNwDst = x4; modifyNwTos =
-    x5; modifyTpSrc = x6; modifyTpDst = x7 } = m
-  in
-  f x x0 x1 x2 x3 x4 x5 x6 x7
 
 (** val modifyDlSrc : modification -> dlAddr option **)
 
@@ -98,18 +64,6 @@ let unmodified =
 
 type act = { modifications : modification; toPorts : pseudoPort list;
              queries : id list }
-
-(** val act_rect :
-    (modification -> pseudoPort list -> id list -> 'a1) -> act -> 'a1 **)
-
-let act_rect f a =
-  let { modifications = x; toPorts = x0; queries = x1 } = a in f x x0 x1
-
-(** val act_rec :
-    (modification -> pseudoPort list -> id list -> 'a1) -> act -> 'a1 **)
-
-let act_rec f a =
-  let { modifications = x; toPorts = x0; queries = x1 } = a in f x x0 x1
 
 (** val modifications : act -> modification **)
 
@@ -200,102 +154,18 @@ type pred =
 | PrAll
 | PrNone
 
-(** val pred_rect :
-    (Pattern.pattern -> 'a1) -> (switchId -> 'a1) -> (pred -> 'a1 -> pred ->
-    'a1 -> 'a1) -> (pred -> 'a1 -> pred -> 'a1 -> 'a1) -> (pred -> 'a1 ->
-    'a1) -> 'a1 -> 'a1 -> pred -> 'a1 **)
-
-let rec pred_rect f f0 f1 f2 f3 f4 f5 = function
-| PrHdr p0 -> f p0
-| PrOnSwitch s -> f0 s
-| PrOr (p0, p1) ->
-  f1 p0 (pred_rect f f0 f1 f2 f3 f4 f5 p0) p1
-    (pred_rect f f0 f1 f2 f3 f4 f5 p1)
-| PrAnd (p0, p1) ->
-  f2 p0 (pred_rect f f0 f1 f2 f3 f4 f5 p0) p1
-    (pred_rect f f0 f1 f2 f3 f4 f5 p1)
-| PrNot p0 -> f3 p0 (pred_rect f f0 f1 f2 f3 f4 f5 p0)
-| PrAll -> f4
-| PrNone -> f5
-
-(** val pred_rec :
-    (Pattern.pattern -> 'a1) -> (switchId -> 'a1) -> (pred -> 'a1 -> pred ->
-    'a1 -> 'a1) -> (pred -> 'a1 -> pred -> 'a1 -> 'a1) -> (pred -> 'a1 ->
-    'a1) -> 'a1 -> 'a1 -> pred -> 'a1 **)
-
-let rec pred_rec f f0 f1 f2 f3 f4 f5 = function
-| PrHdr p0 -> f p0
-| PrOnSwitch s -> f0 s
-| PrOr (p0, p1) ->
-  f1 p0 (pred_rec f f0 f1 f2 f3 f4 f5 p0) p1
-    (pred_rec f f0 f1 f2 f3 f4 f5 p1)
-| PrAnd (p0, p1) ->
-  f2 p0 (pred_rec f f0 f1 f2 f3 f4 f5 p0) p1
-    (pred_rec f f0 f1 f2 f3 f4 f5 p1)
-| PrNot p0 -> f3 p0 (pred_rec f f0 f1 f2 f3 f4 f5 p0)
-| PrAll -> f4
-| PrNone -> f5
-
 type pol =
 | PoAtom of pred * act
 | PoUnion of pol * pol
 | PoSeq of pol * pol
 
-(** val pol_rect :
-    (pred -> act -> 'a1) -> (pol -> 'a1 -> pol -> 'a1 -> 'a1) -> (pol -> 'a1
-    -> pol -> 'a1 -> 'a1) -> pol -> 'a1 **)
-
-let rec pol_rect f f0 f1 = function
-| PoAtom (p0, a) -> f p0 a
-| PoUnion (p0, p1) -> f0 p0 (pol_rect f f0 f1 p0) p1 (pol_rect f f0 f1 p1)
-| PoSeq (p0, p1) -> f1 p0 (pol_rect f f0 f1 p0) p1 (pol_rect f f0 f1 p1)
-
-(** val pol_rec :
-    (pred -> act -> 'a1) -> (pol -> 'a1 -> pol -> 'a1 -> 'a1) -> (pol -> 'a1
-    -> pol -> 'a1 -> 'a1) -> pol -> 'a1 **)
-
-let rec pol_rec f f0 f1 = function
-| PoAtom (p0, a) -> f p0 a
-| PoUnion (p0, p1) -> f0 p0 (pol_rec f f0 f1 p0) p1 (pol_rec f f0 f1 p1)
-| PoSeq (p0, p1) -> f1 p0 (pol_rec f f0 f1 p0) p1 (pol_rec f f0 f1 p1)
-
 type input =
 | InPkt of switchId * portId * packet * bufferId option
-
-(** val input_rect :
-    (switchId -> portId -> packet -> bufferId option -> 'a1) -> input -> 'a1 **)
-
-let input_rect f = function
-| InPkt (x, x0, x1, x2) -> f x x0 x1 x2
-
-(** val input_rec :
-    (switchId -> portId -> packet -> bufferId option -> 'a1) -> input -> 'a1 **)
-
-let input_rec f = function
-| InPkt (x, x0, x1, x2) -> f x x0 x1 x2
 
 type output =
 | OutPkt of switchId * pseudoPort * packet * (bufferId, bytes) sum
 | OutGetPkt of id * switchId * portId * packet
 | OutNothing
-
-(** val output_rect :
-    (switchId -> pseudoPort -> packet -> (bufferId, bytes) sum -> 'a1) -> (id
-    -> switchId -> portId -> packet -> 'a1) -> 'a1 -> output -> 'a1 **)
-
-let output_rect f f0 f1 = function
-| OutPkt (x, x0, x1, x2) -> f x x0 x1 x2
-| OutGetPkt (x, x0, x1, x2) -> f0 x x0 x1 x2
-| OutNothing -> f1
-
-(** val output_rec :
-    (switchId -> pseudoPort -> packet -> (bufferId, bytes) sum -> 'a1) -> (id
-    -> switchId -> portId -> packet -> 'a1) -> 'a1 -> output -> 'a1 **)
-
-let output_rec f f0 f1 = function
-| OutPkt (x, x0, x1, x2) -> f x x0 x1 x2
-| OutGetPkt (x, x0, x1, x2) -> f0 x x0 x1 x2
-| OutNothing -> f1
 
 (** val is_OutPkt : output -> bool **)
 
