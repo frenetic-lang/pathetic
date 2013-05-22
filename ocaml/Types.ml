@@ -1,5 +1,4 @@
 open Datatypes
-open List0
 
 type 'a coq_Eqdec = 'a -> 'a -> bool
 
@@ -79,7 +78,7 @@ let coq_Eq_list e =
 (** val concat_map : ('a1 -> 'a2 list) -> 'a1 list -> 'a2 list **)
 
 let concat_map f lst =
-  fold_right (fun a bs -> app (f a) bs) [] lst
+  List.fold_right (fun a bs -> app (f a) bs) lst []
 
 (** val filter_map_body :
     ('a1 -> 'a2 option) -> 'a1 -> 'a2 list -> 'a2 list **)
@@ -92,10 +91,10 @@ let filter_map_body f a bs =
 (** val filter_map : ('a1 -> 'a2 option) -> 'a1 list -> 'a2 list **)
 
 let filter_map f lst =
-  fold_right (filter_map_body f) [] lst
+  List.fold_right (filter_map_body f) lst []
 
 (** val intersperse : 'a1 -> 'a1 list -> 'a1 list **)
 
 let intersperse v lst =
-  fold_right (fun x xs -> x :: (v :: xs)) [] lst
+  List.fold_right (fun x xs -> x :: (v :: xs)) lst []
 

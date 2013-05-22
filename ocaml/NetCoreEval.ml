@@ -1,9 +1,14 @@
 open Datatypes
-open List0
 open NetworkPacket
 open OpenFlow0x01Types
 open Types
 open WordInterface
+
+let rec partition f = function
+| [] -> ([], [])
+| x :: tl0 ->
+  let (g, d) = partition f tl0 in
+  if f x then ((x :: g), d) else (g, (x :: d))
 
 type id =
   int
@@ -95,12 +100,13 @@ let mod_mask mod0 =
     modifyDlVlanPcp = dlVlanPcp0; modifyNwSrc = nwSrc; modifyNwDst = nwDst;
     modifyNwTos = nwTos0; modifyTpSrc = tpSrc; modifyTpDst = tpDst } = mod0
   in
-  fold_right Pattern.Pattern.inter Pattern.Pattern.all
+  List.fold_right Pattern.Pattern.inter
     ((if is_some dlSrc0
       then Pattern.Pattern.dlSrc Word48.zero
-      else Pattern.Pattern.all) :: ((if is_some dlDst0
+      else Pattern.Pattern.all) :: ([if is_some dlDst0
                                      then Pattern.Pattern.dlDst Word48.zero
-                                     else Pattern.Pattern.all) :: []))
+                                     else Pattern.Pattern.all]))
+    Pattern.Pattern.all
 
 (** val action_mask : act -> Pattern.pattern **)
 
@@ -241,11 +247,11 @@ let eval_action inp act0 =
   let { modifications = mods; toPorts = ports; queries = queries0 } = act0 in
   let InPkt (sw, pt, pk, buf) = inp in
   app
-    (map (fun pt0 -> OutPkt (sw, pt0, (modify_pkt mods pk),
+    (List.map (fun pt0 -> OutPkt (sw, pt0, (modify_pkt mods pk),
       (match buf with
        | Some b -> Coq_inl b
        | None -> Coq_inr (serialize_pkt (modify_pkt mods pk))))) ports)
-    (map (fun qid -> OutGetPkt (qid, sw, pt, pk)) queries0)
+    (List.map (fun qid -> OutGetPkt (qid, sw, pt, pk)) queries0)
 
 (** val classify : pol -> input -> output list **)
 

@@ -1,7 +1,6 @@
 open Classifier
 open ControllerInterface0x04
 open Datatypes
-open List0
 open NetCoreEval
 open NetCoreEval0x04
 open NetCoreCompiler0x04
@@ -142,12 +141,12 @@ let to_flow_mod prio pat act0 tableId =
 (** val flow_mods_of_classifier : act list coq_Classifier -> flowMod list **)
 
 let flow_mods_of_classifier lst tblId =
-  fold_right (fun ppa lst0 ->
+  List.fold_right (fun ppa lst0 ->
     let p,act0 = ppa in
     let prio,pat = p in
     if Pattern.Pattern.is_empty pat
     then lst0
-    else (to_flow_mod prio pat act0 tblId)::lst0) [] (prioritize lst)
+    else (to_flow_mod prio pat act0 tblId)::lst0) (prioritize lst) []
 
 let rec get_watch_port acts = match acts with
   | Forward (_, PhysicalPort pp) :: acts -> Some pp
@@ -155,7 +154,7 @@ let rec get_watch_port acts = match acts with
   | [] -> None
 
 let to_group_mod gid gtype bkts =
-  AddGroup (gtype, gid, map (fun acts -> {bu_weight = 0;
+  AddGroup (gtype, gid, List.map (fun acts -> {bu_weight = 0;
 					  bu_watch_port = get_watch_port acts;
 					  bu_watch_group = None;
 					  bu_actions = (concat_map (translate_action None) acts)}) 
@@ -164,7 +163,7 @@ let to_group_mod gid gtype bkts =
 (** val flow_mods_of_classifier : act list coq_Classifier -> flowMod list **)
 
 let group_mods_of_classifier lst =
-  map (fun (x1,x2,x3) -> to_group_mod x1 x2 x3) lst
+  List.map (fun (x1,x2,x3) -> to_group_mod x1 x2 x3) lst
 
 (** val delete_all_flows : flowMod **)
 let delete_all_groups = 
@@ -237,9 +236,9 @@ module Make =
     let fm_cls, gm_cls = nc_compiler pol0 swId in
     Printf.printf "[NetCoreController0x04.ml] installing ft of size %d %s\n%!" (List.length fm_cls) (cls_to_string fm_cls);
     sequence
-      ((map (fun fm -> Monad.send swId Word32.zero (GroupModMsg fm))
+      ((List.map (fun fm -> Monad.send swId Word32.zero (GroupModMsg fm))
 	  (delete_all_groups :: (group_mods_of_classifier gm_cls))) @
-      (map (fun fm -> Monad.send swId Word32.zero (FlowModMsg fm))
+      (List.map (fun fm -> Monad.send swId Word32.zero (FlowModMsg fm))
         (delete_all_flows tblId::(flow_mods_of_classifier fm_cls tblId))))
   
   (** val set_policy : pol -> unit Monad.m **)
@@ -250,7 +249,7 @@ module Make =
       let switch_list = st.Monad.switches in
       Monad.bind (Monad.put { Monad.policy = pol0; Monad.switches = switch_list })
         (fun x ->
-        Monad.bind (sequence (map (fun sw -> config_commands pol0 sw 0) switch_list))
+        Monad.bind (sequence (List.map (fun sw -> config_commands pol0 sw 0) switch_list))
           (fun x0 -> Monad.ret ())))
   
   (** val handle_switch_disconnected : switchId -> unit Monad.m **)
@@ -258,7 +257,7 @@ module Make =
   let handle_switch_disconnected swId =
     Monad.bind Monad.get (fun st ->
       let switch_list =
-        filter (fun swId' ->
+        List.filter (fun swId' ->
           if Word64.eq_dec swId swId' then false else true) st.Monad.switches
       in
       Monad.bind (Monad.put { Monad.policy = st.Monad.policy; Monad.switches = switch_list })
@@ -291,7 +290,7 @@ module Make =
     Monad.bind Monad.get (fun st ->
       let policy = st.Monad.policy in
       let outs = classify policy (packetIn_to_in swId pk) in
-      sequence (map send_output outs))
+      sequence (List.map send_output outs))
   
   (** val handle_event : event -> unit Monad.m **)
   
