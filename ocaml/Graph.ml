@@ -29,8 +29,8 @@ sig
   val get_ports : graph -> a -> a -> (b*b)
   val get_switches : graph -> a list
   val get_hosts : graph -> a list
+  val get_nodes : graph -> a list
   (* val get_ports : graph -> a -> b list *)
-  val nodes : graph -> NodeSet.t
   (* val get_other_port : graph -> a -> b -> (a*b) option *)
   val next_hop : graph -> a -> b -> a
   val get_nbrs : graph -> a -> a list
@@ -71,6 +71,8 @@ module Graph : GRAPH =
       | Host _ -> k :: acc
       | Switch _ -> acc) graph []
 
+    let get_nodes graph = H.fold (fun k _ acc -> k :: acc) graph []
+
     let port_tbl_to_string portTbl =
       String.concat ";\n\t\t" (H.fold (fun port (sw',port') acc -> (Printf.sprintf "%ld -> (%s,%ld)" port (node_to_string sw') port') :: acc) portTbl [])
 
@@ -86,7 +88,8 @@ module Graph : GRAPH =
 		       foo) in
       H.add swTbl pt1 (sw2, pt2) 
 
-    let add_host_edge graph h sw pt = add_edge graph h (Int32.of_int 0) sw pt
+    let add_host_edge graph h sw pt = add_edge graph h (Int32.of_int 0) sw pt; 
+      add_edge graph sw pt h (Int32.of_int 0)
 
     let del_edge graph sw1 pt1 = try H.remove (H.find graph sw1) pt1 with _ -> raise (NotFound(Printf.sprintf "Can't find %s to del_edge %ld\n" (node_to_string sw1) pt1))
     let del_edges graph edges = List.iter (fun (a,b) -> del_edge graph a b) edges
@@ -146,6 +149,5 @@ module Graph : GRAPH =
       try fst (Hashtbl.find swTbl p) 
       with Not_found -> raise (NotFound(Printf.sprintf "Can't find port %ld to get next_hop\n" p))
 
-    let nodes topo = H.fold (fun sw sw' acc -> NodeSet.add sw acc) topo NodeSet.empty
     let has_node graph = H.mem graph
   end

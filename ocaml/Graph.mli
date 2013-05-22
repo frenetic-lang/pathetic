@@ -20,8 +20,8 @@ sig
   val get_ports : graph -> a -> a -> (b*b)
   val get_switches : graph -> a list
   val get_hosts : graph -> a list
+  val get_nodes : graph -> a list
   (* val get_ports : graph -> a -> b list *)
-  val nodes : graph -> NodeSet.t
   (* val get_other_port : graph -> a -> b -> (a*b) option *)
   val next_hop : graph -> a -> b -> a
   val get_nbrs : graph -> a -> a list
