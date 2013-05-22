@@ -128,9 +128,9 @@ let rec match_path re path =
     | [] -> nu re = Empty
     | a :: w -> match_path (deriv a re) w
   in
-  Printf.printf "match_path %s %s\n" (regex_to_string re) 
-    (String.concat ";" (List.map regex_to_string path));
-  Printf.printf "returned %B\n" return;
+  (* Printf.printf "match_path %s %s\n" (regex_to_string re)  *)
+  (*   (String.concat ";" (List.map regex_to_string path)); *)
+  (* Printf.printf "returned %B\n" return; *)
   return 
 
 

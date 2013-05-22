@@ -27,16 +27,16 @@ let rec k_tree_to_string tree = match tree with
     Printf.sprintf "KTree(%s, [ %s ])" (G.node_to_string n) (String.concat "; " (List.map k_tree_to_string children))
 
 let shortest_path_fail_set re sw topo fail_set =
+  Printf.printf "[FaultTolerance.ml] shortest_path_fail_set %s %s %s\n" (regex_to_string re) (G.node_to_string sw)
+    (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%s,%s)" (G.node_to_string a) (G.node_to_string b)) fail_set));
   let topo' = G.copy topo in
   G.del_links topo' fail_set;
-  shortest_path_re re sw topo
+  List.tl (shortest_path_re re sw topo')
 
 (* Initial version: no backtracking *)
 (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
-(* back-tracking invariant: returns None if there is no n-k FT tree along 'path' *)
 let rec build_k_tree_from_path path regex n k fail_set topo = 
-  (* Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s\n%!"  *)
-  (*   (String.concat ";" (List.map regex_to_string path)); *)
+  Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s %s %d %d [%s]\n%!" (String.concat ";" (List.map G.node_to_string path)) (regex_to_string regex) n k (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%s,%s)" (G.node_to_string a) (G.node_to_string b)) fail_set));
   match path with
     | sw :: [ h ] -> Some (KTree(sw, [KLeaf h]))
     | N.Host h :: path -> 
@@ -51,12 +51,12 @@ let rec build_k_tree_from_path path regex n k fail_set topo =
 	| Some children -> Some (KTree(sw, children)))
 and
     (* Build (n - k) backup paths at 'sw' according to 'regex', avoiding links in 'fail_set'. *)
-    (* backtracking invariant: returns None iff there are not n-k FT backup paths at this node *)
     build_k_children sw regex n k fail_set topo =
+  Printf.printf "[FaultTolerance.ml] build_k_children %s %d %d [%s]\n%!" (regex_to_string regex) n k (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%s,%s)" (G.node_to_string a) (G.node_to_string b)) fail_set));
   if k > n then Some [] 
   else
     let path = shortest_path_fail_set regex sw topo fail_set in
-    match List.hd path with
+    match (List.hd path) with
       | N.Host h -> Some [KLeaf (N.Host h)]
       | new_sw' -> 
 	(match build_k_tree_from_path path regex n k fail_set topo with
@@ -110,6 +110,7 @@ let rec tagged_k_tree_to_string tree = match tree with
     (String.concat "; " (List.map 
 			   (fun (k,t) -> Printf.sprintf "(%d,%s)" k (tagged_k_tree_to_string t)) 
 			   children))
+  | KRoot_t(h, tree) -> Printf.sprintf "KRoot_t %s (%s)" (G.node_to_string h) (tagged_k_tree_to_string tree)
 
 let rec tag_k_tree tree tag gensym = match tree with
   | KLeaf h -> KLeaf_t h
@@ -120,6 +121,7 @@ let rec tag_k_tree tree tag gensym = match tree with
     let backup_children = List.map (fun child -> let new_tag = (GenSym.next_val gensym) in
 						 (new_tag, tag_k_tree child new_tag gensym)) rest in
     KTree_t (sw, first_child :: backup_children)
+  | KRoot (h, tree) -> KRoot_t(h, tag_k_tree tree tag gensym)
 
 let next_port_from_k_tree sw topo pathTag tree = 
   (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
@@ -135,7 +137,7 @@ let next_hop_from_k_tree sw topo tree =
   (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
   match tree with
   | (_, KLeaf_t host) -> 
-    let (_,p1) = G.get_ports topo host sw in
+    let (p1,p2) = G.get_ports topo host sw in
     (sw, p1, tree)
   | (_, KTree_t (sw', _)) -> 
     let p1,p2 = G.get_ports topo sw sw' in

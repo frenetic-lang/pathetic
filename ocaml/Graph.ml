@@ -103,11 +103,6 @@ module Graph : GRAPH =
     let get_nbr_links graph sw = try (H.fold (fun pt1 (sw2, pt2) acc -> (sw2, pt2) :: acc) (H.find graph sw) []) 
       with _ -> []
 
-    (* Ignore hosts attached to this switch for the moment *)
-    let del_node graph sw = let nbrs = get_nbr_links graph sw in
-			      del_edges graph nbrs;
-			      H.remove graph sw
-
     let copy graph = let newgraph = H.create (H.length graph) in
 		     let () = H.iter (fun k v -> H.add newgraph k (H.copy v)) graph in
 		     newgraph
@@ -142,6 +137,11 @@ module Graph : GRAPH =
     let del_link graph sw1 sw2 = let p1,p2 = get_ports graph sw1 sw2 in
 				 del_edge graph sw1 p1
     let del_links graph edges = List.iter (fun (a,b) -> del_link graph a b) edges
+
+    let del_node graph sw = let nbrs = get_nbrs graph sw in
+			      try List.iter (fun a -> del_link graph a sw; del_link graph sw a) nbrs with _ -> ();
+			      H.remove graph sw
+
 
     let next_hop topo sw p = 
       let swTbl = try (Hashtbl.find topo sw) 
