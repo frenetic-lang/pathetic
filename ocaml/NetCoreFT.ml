@@ -186,6 +186,7 @@ let rec predicate_to_string pred = match pred with
   | NoPackets -> "None"
   | Switch sw -> Printf.sprintf "(Switch %Ld)" sw
   | InPort pt -> Printf.sprintf "(InPort %ld)" pt
+  | DlType typ -> Printf.sprintf "(DlType %d)" typ
   | DlSrc add -> Printf.sprintf "(DlSrc %s)" (Misc.string_of_mac add)
   | DlDst add -> Printf.sprintf "(DlDst %s)" (Misc.string_of_mac add)
   | DlVlan (Some vlan) -> Printf.sprintf "(DlVlan %d)" vlan

@@ -13,8 +13,8 @@ native:
 doc:
 	$(OCAMLBUILD) doc.docdir/index.html
 
-test: _build/Test.d.byte
-	$<
+test: 
+	$(OCAMLBUILD) test.otarget		
 
 clean:
 	rm -rf _build
