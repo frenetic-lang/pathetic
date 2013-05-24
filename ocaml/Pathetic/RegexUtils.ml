@@ -174,21 +174,59 @@ let rec to_dnf pol =
   if dnf_form pol' then pol'
   else to_dnf pol'
 
-let rec blast_inter pol = match pol with
-  | RegInter(RegPol(pr1,re1,k1), RegPol(pr2,re2,k2)) ->
-    RegPol(And(pr1,pr2), re1 && re2, max k1 k2)
-  | RegInter(a, b) -> let RegPol(pr1, re1, k1) = blast_inter a in
-		      let RegPol(pr2, re2, k2) = blast_inter b in
-		      RegPol(And(pr1,pr2), re1 && re2, max k1 k2)
-  | RegUnion(a, b) -> RegUnion(blast_inter a, blast_inter b)
-  | RegPol _ -> pol
+let rec dnf_form_pred pred = match pred with
+  | And(Or _, _) -> false
+  | And(_, Or _) -> false
+  | Not (Not _) -> false
+  | Not (And _) -> false
+  | Not (Or _) -> false
+  | And(a,b) -> dnf_form_pred a & dnf_form_pred b
+  | Or(a,b) -> dnf_form_pred a & dnf_form_pred b
+  | _ -> true
+
+let rec to_dnf_pred' pred = match pred with
+  | And (Or(a,b), c) -> Or(to_dnf_pred' (And(a,c)), to_dnf_pred' (And(b,c)))
+  | And (c,Or(a,b)) -> Or(to_dnf_pred' (And(a,c)), to_dnf_pred' (And(b,c)))
+  | And (a,b) -> And(to_dnf_pred' a, to_dnf_pred' b)
+  | Or (a, b) -> Or( to_dnf_pred' a, to_dnf_pred' b)
+  | _ -> pred
+
+let rec demorganize pred = match pred with
+  | Not (And(a,b)) -> Or (demorganize (Not a), demorganize (Not b))
+  | Not (Or(a,b)) -> And (demorganize (Not a), demorganize (Not b))
+  | Not (Not a) -> demorganize a
+  | And(a,b) -> And (demorganize a, demorganize b)
+  | Or(a,b) -> Or (demorganize a, demorganize b)
+  | _ -> pred
+
+let rec to_dnf_pred'' pred = 
+  let pred' = to_dnf_pred' pred in
+  if dnf_form_pred pred' then pred'
+  else to_dnf_pred'' pred'
+
+let rec to_dnf_pred pred = 
+  to_dnf_pred'' (demorganize pred)
+
+(* takes a DNF pred *)
+let rec to_dnf_list pred : predicate list list = match pred with
+  | Or(a,b) -> to_dnf_list a @ to_dnf_list b
+  | And(a,b) -> [List.concat (to_dnf_list a @ to_dnf_list b)]
+  | _ -> [[pred]]
+
+let trivial_pol = RegPol(NoPackets, Star, 0)
 
 let rec product lst1 lst2 = match lst1 with
   | [] -> []
   | a :: lst1 -> (List.map (fun x -> (a,x)) lst2) @ product lst1 lst2
 
+(* returns true if atomic pred pr2 is subsumed by atomic pred pr1 *)
+let atom_matches pr1 pr2 = match pr1,pr2 with
+  | All,_ -> true
+  | _,NoPackets -> true
+  | _ -> pr1 = pr2
+  
 (* pr2 is an atomic pred *)
-let rec pred_matches pr1 pr2 = 
+let rec pred_matches pr1 pr2 =
   match pr1 with
     | All -> true
     | NoPackets -> false
@@ -197,28 +235,84 @@ let rec pred_matches pr1 pr2 =
     | Not a -> not (pred_matches a pr2)
     | _ -> pr1 = pr2
 
-let rec preds_overlap pr1 pr2 = match pr1 with
-  | All -> not (is_empty_pred pr2)
-  | NoPackets -> false
-  | DlType a -> pred_matches pr2 (DlType a)
-  | Or(a,b) -> preds_overlap a pr2 or preds_overlap b pr2
-  | Not a -> not (preds_overlap a (Not pr2))
-  | And(a,b) -> preds_overlap a (And(b,pr2)) & preds_overlap b (And(a,pr2))
-and
-    is_empty_pred pr = match pr with
-      | NoPackets -> true
-      | All -> false
-      | DlType _ -> false
-      | Or(a,b) -> is_empty_pred a & is_empty_pred b
-      | Not a -> not (is_empty_pred a)
-      | And(a,b) -> not (preds_overlap a b)
+(* thm: for phi,psi DNF, phi overlaps with psi iff one conjunction of phi overlaps with one conjunction of psi *)
+(* DNF normal form: list of list of atoms *)
+(* let rec preds_overlap pr1 pr2 = match pr1 with *)
+(*   | All -> not (is_empty_pred pr2) *)
+(*   | NoPackets -> false *)
+(*   | Or(a,b) -> preds_overlap a pr2 or preds_overlap b pr2 *)
+(*   | Not a -> not (preds_overlap a (Not pr2)) *)
+(*   | And(a,b) -> preds_overlap a pr2 & preds_overlap b pr2 *)
+(*   (\* atomic case *\) *)
+(*   | _ -> pred_matches pr2 pr1 *)
+(* and *)
+(*     is_empty_pred pr = match pr with *)
+(*       | NoPackets -> true *)
+(*       | All -> false *)
+(*       | DlType _ -> false *)
+(*       | Or(a,b) -> is_empty_pred a & is_empty_pred b *)
+(*       | Not a -> not (is_empty_pred a) *)
+(*       | And(a,b) -> not (preds_overlap a b) *)
 
+let rec conj_overlap' pr1 pr2 =
+  List.for_all (fun pr -> List.exists (atom_matches pr) pr2) pr1
+
+let rec conj_overlap pr1 pr2 = conj_overlap' pr1 pr2 or conj_overlap' pr2 pr1
+
+let rec preds_overlap pr1 pr2 = 
+  (List.for_all (fun pr -> List.exists (conj_overlap pr) pr2) pr1) or
+    (List.for_all (fun pr -> List.exists (conj_overlap pr) pr1) pr2)
+
+let contradiction cnj = List.exists (fun pr -> not (conj_overlap [pr] cnj)) cnj
+
+let is_empty dnf = List.for_all contradiction dnf
+
+(* pr2 approx: may say no when equiv *)
+let rec preds_equiv pr1 pr2 =
+  pr1 = pr2
+
+let print_list printer lst = 
+  Printf.sprintf "[%s]" (String.concat ";" (List.map printer lst))
+
+let rec blast_inter pol = match pol with
+  | RegInter(RegPol(pr1,re1,k1), RegPol(pr2,re2,k2)) ->
+    let pr1' = to_dnf_list pr1 in
+    let pr2' = to_dnf_list pr2 in
+    if preds_overlap pr1' pr2' 
+    then
+      RegPol(And(pr1,pr2), re1 && re2, max k1 k2)
+    else trivial_pol
+  | RegInter(a, b) -> let RegPol(pr1, re1, k1) = blast_inter a in
+		      let RegPol(pr2, re2, k2) = blast_inter b in
+		      let pr1' = to_dnf_list pr1 in
+		      let pr2' = to_dnf_list pr2 in
+		      if preds_overlap pr1' pr2' 
+		      then
+			RegPol(And(pr1,pr2), re1 && re2, max k1 k2)
+		      else trivial_pol
+
+  | RegUnion(a, b) -> RegUnion(blast_inter a, blast_inter b)
+  | RegPol _ -> pol
 
 let rec blast_union1 (pol1, pol2) = match pol1,pol2 with
   | RegPol(pr1,re1,k1), RegPol(pr2,re2,k2) ->
-    [RegPol(And (pr1, Not pr2), re1, k1);
-     RegPol(And (pr2, Not pr1), re2, k2);
-     RegPol(And (pr1, pr2), re1 && re2, max k1 k2)]
+    let pr1' = to_dnf_list pr1 in
+    let pr2' = to_dnf_list pr2 in
+    match is_empty pr1', is_empty pr2' with
+      | true,true -> []
+      | true, false -> [pol2]
+      | false, true -> [pol1]
+      | _ ->
+	if preds_equiv pr1 pr2 then
+	  [RegPol(pr1, re1 && re2, max k1 k2)]
+	else
+	  if preds_overlap pr1' pr2' then
+	    [RegPol(And (pr1, Not pr2), re1, k1);
+	     RegPol(And (pr2, Not pr1), re2, k2);
+	     RegPol(And (pr1, pr2), re1 && re2, max k1 k2)]
+	  else
+	    [RegPol(pr1,re1,k1); 
+	     RegPol(pr2,re2,k2)]
 
 let rec blast_union pol = match pol with
   | RegUnion(a,b) -> let prod = product (blast_union a) (blast_union b) in
