@@ -174,6 +174,11 @@ let rec to_dnf pol =
   if dnf_form pol' then pol'
   else to_dnf pol'
 
+let rec to_dnf_list pol = match pol with
+  | RegUnion(a,b) -> to_dnf_list a @ to_dnf_list b
+  | RegInter(a,b) -> [List.concat (to_dnf_list a @ to_dnf_list b) ]
+  | RegPol(pr,re,k) -> [[(pr,re,k)]]
+
 let rec dnf_form_pred pred = match pred with
   | And(Or _, _) -> false
   | And(_, Or _) -> false
@@ -208,9 +213,9 @@ let rec to_dnf_pred pred =
   to_dnf_pred'' (demorganize pred)
 
 (* takes a DNF pred *)
-let rec to_dnf_list pred : predicate list list = match pred with
-  | Or(a,b) -> to_dnf_list a @ to_dnf_list b
-  | And(a,b) -> [List.concat (to_dnf_list a @ to_dnf_list b)]
+let rec to_dnf_pred_list pred : predicate list list = match pred with
+  | Or(a,b) -> to_dnf_pred_list a @ to_dnf_pred_list b
+  | And(a,b) -> [List.concat (to_dnf_pred_list a @ to_dnf_pred_list b)]
   | _ -> [[pred]]
 
 let trivial_pol = RegPol(NoPackets, Star, 0)
@@ -254,11 +259,14 @@ let rec pred_matches pr1 pr2 =
 (*       | Not a -> not (is_empty_pred a) *)
 (*       | And(a,b) -> not (preds_overlap a b) *)
 
+(* preds in DNF list form *)
 let rec conj_overlap' pr1 pr2 =
   List.for_all (fun pr -> List.exists (atom_matches pr) pr2) pr1
 
+(* preds in DNF list form *)
 let rec conj_overlap pr1 pr2 = conj_overlap' pr1 pr2 or conj_overlap' pr2 pr1
 
+(* preds in DNF list form *)
 let rec preds_overlap pr1 pr2 = 
   (List.for_all (fun pr -> List.exists (conj_overlap pr) pr2) pr1) or
     (List.for_all (fun pr -> List.exists (conj_overlap pr) pr1) pr2)
@@ -274,18 +282,29 @@ let rec preds_equiv pr1 pr2 =
 let print_list printer lst = 
   Printf.sprintf "[%s]" (String.concat ";" (List.map printer lst))
 
+let rec blast_inter_list pol = 
+  List.map (fun (a,b,c) -> RegPol(a,b,c)) 
+    (List.map
+       (fun pol -> (List.fold_left (fun (pr_a, re_a, k_a) (pr,re,k) ->
+	 let pr1' = to_dnf_pred_list pr_a in
+	 let pr2' = to_dnf_pred_list pr in
+	 if preds_overlap pr1' pr2' 
+	 then
+	   (to_dnf_pred (And(pr_a, pr)), re_a && re, max k_a k)
+	 else (NoPackets, Star, 0)) (All, Star, 0) pol)) pol)
+
 let rec blast_inter pol = match pol with
   | RegInter(RegPol(pr1,re1,k1), RegPol(pr2,re2,k2)) ->
-    let pr1' = to_dnf_list pr1 in
-    let pr2' = to_dnf_list pr2 in
+    let pr1' = to_dnf_pred_list pr1 in
+    let pr2' = to_dnf_pred_list pr2 in
     if preds_overlap pr1' pr2' 
     then
       RegPol(And(pr1,pr2), re1 && re2, max k1 k2)
     else trivial_pol
   | RegInter(a, b) -> let RegPol(pr1, re1, k1) = blast_inter a in
 		      let RegPol(pr2, re2, k2) = blast_inter b in
-		      let pr1' = to_dnf_list pr1 in
-		      let pr2' = to_dnf_list pr2 in
+		      let pr1' = to_dnf_pred_list pr1 in
+		      let pr2' = to_dnf_pred_list pr2 in
 		      if preds_overlap pr1' pr2' 
 		      then
 			RegPol(And(pr1,pr2), re1 && re2, max k1 k2)
@@ -294,10 +313,10 @@ let rec blast_inter pol = match pol with
   | RegUnion(a, b) -> RegUnion(blast_inter a, blast_inter b)
   | RegPol _ -> pol
 
-let rec blast_union1 (pol1, pol2) = match pol1,pol2 with
+let rec blast_union1 pol1 pol2 = match pol1,pol2 with
   | RegPol(pr1,re1,k1), RegPol(pr2,re2,k2) ->
-    let pr1' = to_dnf_list pr1 in
-    let pr2' = to_dnf_list pr2 in
+    let pr1' = to_dnf_pred_list pr1 in
+    let pr2' = to_dnf_pred_list pr2 in
     match is_empty pr1', is_empty pr2' with
       | true,true -> []
       | true, false -> [pol2]
@@ -314,13 +333,110 @@ let rec blast_union1 (pol1, pol2) = match pol1,pol2 with
 	    [RegPol(pr1,re1,k1); 
 	     RegPol(pr2,re2,k2)]
 
-let rec blast_union pol = match pol with
-  | RegUnion(a,b) -> let prod = product (blast_union a) (blast_union b) in
-		       List.concat (List.map blast_union1 prod)
-  | RegPol _ -> [pol]
+let rec remove_dups' lst pol = match lst with
+  | [] -> ([], pol)
+  | RegPol(pr',re',k') :: lst -> 
+    let RegPol(pr,re,k) = pol in
+    if preds_equiv pr' pr then
+      remove_dups' lst (RegPol(pr, re && re', max k k'))
+    else
+      let (rst, pol') = remove_dups' lst pol in
+      (RegPol(pr',re',k') :: rst, pol')
 
-let rec normalize pol = 
-  blast_union (blast_inter (to_dnf pol))
+let rec remove_dups pols = match pols with
+  | [] -> []
+  | p :: pols -> let rst,p' = remove_dups' pols p in
+		 p' :: remove_dups rst
+  
+let rec blast_union pols = match pols with
+  | [] -> []
+  | pol :: pols -> List.concat (List.map (blast_union1 pol) pols) @ blast_union pols
+
+(* let rec normalize pol =  *)
+(*   blast_union (blast_inter (to_dnf pol)) *)
+
+let rec simpl_pred pred = match pred with
+  | Or(All, _) -> All
+  | Or(_, All) -> All
+  | Or(NoPackets, a) -> a
+  | Or(a, NoPackets) -> a
+  | Or (a,b) -> let a' = simpl_pred a in
+		let b' = simpl_pred b in
+		if preds_equiv a' b' then a' else Or (a', b')
+  | And(All, a) -> a
+  | And(a, All) -> a
+  | And(NoPackets, _) -> NoPackets
+  | And(_, NoPackets) -> NoPackets
+  | And (a,b) -> let a' = simpl_pred a in
+		 let b' = simpl_pred b in
+		 if preds_equiv a' b' then a' else And (a', b')
+  | Not (Not a) -> a
+  | Not All -> NoPackets
+  | Not NoPackets -> All
+  | _ -> pred
+
+let rec simpl_re re = match re with
+  | Union(Star, _) -> Star
+  | Union(_, Star) -> Star
+  | Union(a, EmptySet) -> simpl_re a
+  | Union(EmptySet, a) -> simpl_re a
+  | Union(a,b) -> let a' = simpl_re a in
+		  let b' = simpl_re b in
+		  if a' = b' then a' else Union(a',b')
+  | Intersection(Star, a) -> simpl_re a
+  | Intersection(a, Star) -> simpl_re a
+  | Intersection(EmptySet, a) -> EmptySet
+  | Intersection(a, EmptySet) -> EmptySet
+  | Intersection(a,b) -> let a' = simpl_re a in
+			 let b' = simpl_re b in
+			 if a' = b' then a' else Intersection(a',b')
+  | Sequence(Empty,a) -> simpl_re a
+  | Sequence(a,Empty) -> simpl_re a
+  | Sequence(EmptySet, a) -> EmptySet
+  | Sequence(a, EmptySet) -> EmptySet
+  | Sequence(a,b) -> Sequence(simpl_re a, simpl_re b)
+  | Regex.Not Star -> EmptySet
+  | Regex.Not EmptySet -> Star
+  | Regex.Not (Regex.Not a) -> simpl_re a
+  | Regex.Not a -> Regex.Not (simpl_re a)
+  | _ -> re
+
+let simpl_pol = 
+  List.map (fun pol ->
+    let RegPol(pr,re,k) = pol in
+    RegPol(simpl_pred pr, simpl_re re, k))
+
+let remove_trivial = 
+  List.fold_left (fun acc p -> 
+    let RegPol(pr,re,k) = p in
+    if pr = NoPackets or re = EmptySet then acc else p :: acc) []
+
+(* iterate until the set of policies are disjoint. At each step,
+   subtract off all the policies that do not overlap with any other
+   policies, iterate over the remainder *)
+
+let simplify pols =
+  remove_dups (remove_trivial (simpl_pol pols))
+
+(* atomic pols *)
+let pols_disjoint pol1 pol2 = 
+  let RegPol(pr1,_,_) = pol1 in
+  let RegPol(pr2,_,_) = pol2 in
+  let pr1' = to_dnf_pred_list (to_dnf_pred pr1) in
+  let pr2' = to_dnf_pred_list (to_dnf_pred pr2) in
+  not (preds_overlap pr1' pr2')
+
+let rec are_disjoint pols = match pols with
+  | [] -> true
+  | pol :: pols -> List.for_all (pols_disjoint pol) pols & are_disjoint pols
+
+let rec normalize' pols = 
+  let pols' = simplify (blast_union (simplify pols))
+  in
+  if are_disjoint pols' then pols' else normalize' pols'
+
+let normalize pol = 
+  normalize' (blast_inter_list (to_dnf_list (to_dnf pol)))
 
 let rec compile_regex pol topo = match pol with
   | RegPol (pred, reg, _) -> compile_path pred (expand_re reg topo) topo (Gensym.next ())
