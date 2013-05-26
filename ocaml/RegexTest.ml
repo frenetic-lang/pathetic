@@ -2,19 +2,18 @@ open WordInterface
 
 open Platform0x04
 open NetCoreFT
-open FaultTolerance
+(* open FaultTolerance *)
 
 module G = Graph.Graph
-module N = Graph
 
 module Routing = struct
 
-  let s101 = N.Switch (Int64.of_int 1)
-  let s102 = N.Switch (Int64.of_int 2)
-  let s103 = N.Switch (Int64.of_int 3)
-  let s104 = N.Switch (Int64.of_int 4)
-  let h1 = N.Host 1
-  let h2 = N.Host 2
+  let s101 = G.Switch (Int64.of_int 1)
+  let s102 = G.Switch (Int64.of_int 2)
+  let s103 = G.Switch (Int64.of_int 3)
+  let s104 = G.Switch (Int64.of_int 4)
+  let h1 = G.Host 1
+  let h2 = G.Host 2
   open Pathetic.Regex
   open Pathetic.RegexUtils
     (* Simple linear topo 101 <-> 102 <-> 103 *)
