@@ -185,7 +185,8 @@ let policy_from_k_tree pr tree topo path_tag tag =
       Par(backup, children_pols)
 
 
-let rec compile_ft_regex pred vid (regex : regex) k topo = 
+let rec compile_ft_regex pol vid topo = 
+  let RegPol(pred, regex, k) = pol in
   let ktree = build_k_tree k regex topo in
   let genSym = GenSym.create() in
   let tag = GenSym.next_val genSym in
@@ -193,11 +194,10 @@ let rec compile_ft_regex pred vid (regex : regex) k topo =
   policy_from_k_tree pred tagged_ktree topo vid tag
 
     
-let rec compile_ft_to_nc1 regpol topo genSym =
-  match regpol with
-    | RegUnion (p1,p2) -> Par(compile_ft_to_nc1 p1 topo genSym, compile_ft_to_nc1 p2 topo genSym)
-    | RegPol (pred, path, k) -> let vid = GenSym.next_val genSym in
-				      compile_ft_regex pred vid path k topo
+let compile_ft_to_nc1 pols topo genSym = 
+  List.fold_left (fun acc pol -> let vid = GenSym.next_val genSym in 
+				 Par(compile_ft_regex pol vid topo, acc))
+    trivial_pol pols
 
 let rec compile_ft_to_nc regpol topo =
-  compile_ft_to_nc1 regpol topo (GenSym.create())
+  compile_ft_to_nc1 (normalize regpol) topo (GenSym.create())
