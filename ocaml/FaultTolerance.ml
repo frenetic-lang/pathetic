@@ -193,11 +193,9 @@ let rec compile_ft_regex pol vid topo =
   let tagged_ktree = tag_k_tree ktree tag genSym in
   policy_from_k_tree pred tagged_ktree topo vid tag
 
-    
-let compile_ft_to_nc1 pols topo genSym = 
+let rec compile_ft_to_nc regpol topo =
+  let genSym = GenSym.create() in
+  let pols = normalize regpol in
   List.fold_left (fun acc pol -> let vid = GenSym.next_val genSym in 
 				 Par(compile_ft_regex pol vid topo, acc))
     trivial_pol pols
-
-let rec compile_ft_to_nc regpol topo =
-  compile_ft_to_nc1 (normalize regpol) topo (GenSym.create())
