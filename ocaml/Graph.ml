@@ -3,19 +3,11 @@ module Q = Queue
 module M = OpenFlowTypes
 module P = OpenFlowTypes
 
-type node = 
-    Host of int
-  | Switch of M.switchId
-
-module NodeSet = Set.Make(
-  struct
-    let compare = Pervasives.compare
-    type t = node
-  end)
-
-
 module type GRAPH =
 sig
+  type node = 
+      Host of int
+    | Switch of M.switchId
   type a = node
   type b = P.portId
   type graph
@@ -49,6 +41,9 @@ end
 
 module Graph : GRAPH =
   struct
+    type node = 
+	Host of int
+      | Switch of M.switchId
     type a = node
     type b = P.portId
     type h = int

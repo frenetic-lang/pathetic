@@ -6,7 +6,6 @@ open NetCoreFT
 open Pathetic.Regex
 module H = Hashtbl
 module G = Graph.Graph
-module N = Graph
 
 module D = DiamondTopo
 
@@ -32,8 +31,8 @@ module Routing = struct
     (a <<< 24) ||| (b <<< 16) ||| (c <<< 8) ||| d
 
   let make_host_ip i = ints_to_ipv4 (10,0,0,i)
-  let h1 = N.Host 1
-  let h2 = N.Host 2
+  let h1 = G.Host 1
+  let h2 = G.Host 2
 
   let s1 = Int64.of_int 1
   let s2 = Int64.of_int 2

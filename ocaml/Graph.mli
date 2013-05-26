@@ -1,12 +1,9 @@
-type node =
-    Host of int
-  | Switch of OpenFlowTypes.switchId
-
-module NodeSet : Set.S
-  with type elt = node
-
 module type GRAPH =
 sig
+  type node =
+      Host of int
+    | Switch of OpenFlowTypes.switchId
+
   type a = node
   type b = OpenFlowTypes.portId
   type graph

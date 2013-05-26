@@ -3,13 +3,13 @@ open NetCoreFT
 
 module G = Graph.Graph
 
-let s1 = Graph.Switch (Int64.of_int 1)
-let s2 = Graph.Switch (Int64.of_int 2)
-let s3 = Graph.Switch (Int64.of_int 3)
-let s4 = Graph.Switch (Int64.of_int 4)
+let s1 = G.Switch (Int64.of_int 1)
+let s2 = G.Switch (Int64.of_int 2)
+let s3 = G.Switch (Int64.of_int 3)
+let s4 = G.Switch (Int64.of_int 4)
 
-let h1 = Graph.Host 1
-let h2 = Graph.Host 2
+let h1 = G.Host 1
+let h2 = G.Host 2
 
 let make_topo () = 
   let topo = G.create () in

@@ -1,6 +1,6 @@
 open OpenFlow0x01Types
 open NetCoreFT
-module G = Graph
+module G = Graph.Graph
 
 (* type graph = (switchId * switchId * int) list *)
 
@@ -28,7 +28,7 @@ let (||) a b = Union(a,b)
 let (<.>) a b = Sequence(a,b)
 
 let rec regex_to_string reg = match reg with
-  | Const(h) -> Printf.sprintf "%s" (G.Graph.node_to_string h)
+  | Const(h) -> Printf.sprintf "%s" (G.node_to_string h)
   | Star -> "*"
   | Empty -> "Empty"
   | EmptySet -> "{}"
