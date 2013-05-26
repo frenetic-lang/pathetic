@@ -92,28 +92,6 @@ struct
   let next () = incr count; !count
 end
 
-let rec height pol = match pol with
-  | RegPol _ -> 1
-  | RegUnion(pol1, pol2) -> 1 + max (height pol1) (height pol2)
-  | RegInter(pol1, pol2) -> 1 + max (height pol1) (height pol2)
-
-(* inter over union *)
-
-let rec cnf_form pol = match pol with
-  | RegPol _ -> true
-  | RegUnion(RegPol _, RegPol _) -> true
-  | RegUnion(RegPol _, RegUnion _) -> false
-  | RegUnion(RegUnion _, RegPol _) -> false
-  | RegUnion(RegInter _, _) -> false
-  | RegUnion(_, RegInter _) -> false
-  | RegUnion(a,b) -> cnf_form a & cnf_form b
-  | RegInter(RegPol _, RegPol _) -> true
-  | RegInter(RegPol _, RegUnion _) -> false
-  | RegInter(RegUnion _, RegPol _) -> false
-  | RegInter(RegInter _, RegPol _) -> false
-  | RegInter(RegPol _, RegInter _) -> false
-  | RegInter(a,b) -> cnf_form a & cnf_form b
-
 let rec dnf_form pol = match pol with
   | RegPol _ -> true
   | RegInter(RegPol _, RegPol _) -> true
@@ -128,20 +106,6 @@ let rec dnf_form pol = match pol with
   | RegUnion(RegUnion _, RegPol _) -> false
   | RegUnion(RegPol _, RegUnion _) -> false
   | RegUnion(a,b) -> dnf_form a & dnf_form b
-
-let rec to_cnf' pol = match pol with
-  | RegUnion (RegPol _, RegPol _) -> pol
-  | RegUnion (RegInter(a,b), c) -> RegInter(to_cnf' (RegUnion(a,c)), to_cnf' (RegUnion(b,c)))
-  | RegUnion (c,RegInter(a,b)) -> RegInter(to_cnf' (RegUnion(a,c)), to_cnf' (RegUnion(b,c)))
-  | RegUnion (RegUnion (pol1,pol2), RegPol(pr,re,k) ) -> 
-    let pol3 = RegPol(pr,re,k) in
-    RegUnion (to_cnf' (RegUnion(pol1, pol3)), 
-	      to_cnf' (RegUnion(pol2, pol3)))
-  | RegUnion (RegPol(pr,re,k), RegUnion (pol1,pol2)) -> 
-    let pol3 = RegPol(pr,re,k) in
-    RegUnion (to_cnf' (RegUnion(pol1, pol3)), 
-	      to_cnf' (RegUnion(pol2, pol3)))
-  | RegUnion (a,b) -> RegUnion(to_cnf' a, to_cnf' b)
 
 let rec to_dnf' pol = match pol with
   | RegInter (RegPol _, RegPol _) -> pol
@@ -163,11 +127,6 @@ let rec to_dnf' pol = match pol with
 							    to_dnf' (RegUnion (b, (RegPol (pr, re, k)))))
   | RegUnion (a, b) -> RegUnion( to_dnf' a, to_dnf' b)
   | RegPol _ -> pol
-
-let rec to_cnf pol = 
-  let pol' = to_cnf' pol in
-  if cnf_form pol' then pol'
-  else to_cnf pol'
 
 let rec to_dnf pol = 
   let pol' = to_dnf' pol in
