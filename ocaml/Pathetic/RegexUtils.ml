@@ -354,10 +354,10 @@ let rec simpl_re re = match re with
   | Sequence(EmptySet, a) -> EmptySet
   | Sequence(a, EmptySet) -> EmptySet
   | Sequence(a,b) -> Sequence(simpl_re a, simpl_re b)
-  | Regex.Not Star -> EmptySet
-  | Regex.Not EmptySet -> Star
-  | Regex.Not (Regex.Not a) -> simpl_re a
-  | Regex.Not a -> Regex.Not (simpl_re a)
+  | Comp Star -> EmptySet
+  | Comp EmptySet -> Star
+  | Comp (Comp a) -> simpl_re a
+  | Comp a -> Comp (simpl_re a)
   | _ -> re
 
 let simpl_pol = 

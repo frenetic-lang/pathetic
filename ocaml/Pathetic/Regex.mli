@@ -6,7 +6,7 @@ type regex =
   | Sequence of regex * regex
   | Union of regex * regex
   | Intersection of regex * regex
-  | Not of regex
+  | Comp of regex
   | Empty
   | EmptySet
 

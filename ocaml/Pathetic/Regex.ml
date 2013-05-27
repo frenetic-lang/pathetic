@@ -11,7 +11,7 @@ type regex =
   | Sequence of regex * regex
   | Union of regex * regex
   | Intersection of regex * regex
-  | Not of regex
+  | Comp of regex
   | Empty
   | EmptySet
 
@@ -32,7 +32,7 @@ let rec regex_to_string reg = match reg with
   | Star -> "*"
   | Empty -> "Empty"
   | EmptySet -> "{}"
-  | Not r -> Printf.sprintf "not (%s)" (regex_to_string r)
+  | Comp r -> Printf.sprintf "not (%s)" (regex_to_string r)
   | Sequence(reg1, reg2) -> Printf.sprintf "( %s <.> %s )" (regex_to_string reg1) (regex_to_string reg2)
   | Union(reg1, reg2) -> Printf.sprintf "( %s <||> %s )" (regex_to_string reg1) (regex_to_string reg2)
   | Intersection(reg1, reg2) -> Printf.sprintf "( %s <&&> %s )" (regex_to_string reg1) (regex_to_string reg2)
@@ -76,8 +76,8 @@ let rec reduce_re re = match re with
       | Intersection(EmptySet,_) -> EmptySet
       | Intersection(_,EmptySet) -> EmptySet
       | Intersection(a,b) -> if a = b then reduce_re a else Intersection(reduce_re a, reduce_re b)
-      | Not (Not a) -> reduce_re a
-      | Not a -> Not (reduce_re a)
+      | Comp (Comp a) -> reduce_re a
+      | Comp a -> Comp (reduce_re a)
 
 let rec nu re = 
   let foo =
@@ -89,7 +89,7 @@ let rec nu re =
       | Union(a,b) -> reduce_nu (nu a || nu b)
       | Star -> Empty
       | Intersection(a,b) -> reduce_nu (nu a && nu b)
-      | Not a -> match nu a with
+      | Comp a -> match nu a with
 	  | Empty -> EmptySet
 	  | EmptySet -> Empty
   in
@@ -104,7 +104,7 @@ let rec is_empty re = match re with
   | Sequence(a,b) -> is_empty(a) or is_empty(b)
   | Union(a,b) -> is_empty(a) & is_empty(b)
   | Star -> false
-  | Not a -> not (is_empty a)
+  | Comp a -> not (is_empty a)
 
 let rec deriv sym re = 
   let return =  match re with
@@ -115,7 +115,7 @@ let rec deriv sym re =
     | Star -> Star
     | Union(a,b) -> reduce_re ((deriv sym a) || (deriv sym b))
     | Intersection(a,b) -> reduce_re ((deriv sym a) && (deriv sym b))
-    | Not a -> reduce_re (Not (deriv sym a))
+    | Comp a -> reduce_re (Comp (deriv sym a))
   in
   (* Printf.printf "deriv %s %s\n" (regex_to_string sym) (regex_to_string re); *)
   (* Printf.printf "returned %s\n" (regex_to_string return); *)

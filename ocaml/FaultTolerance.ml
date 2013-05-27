@@ -40,6 +40,8 @@ let rec build_k_tree_from_path path regex n k fail_set topo =
     | sw :: [ h ] -> Some (KTree(sw, [KLeaf h]))
     | G.Host h :: path -> 
       (match build_k_tree_from_path path (deriv (Const (G.Host h)) regex) n k fail_set topo with
+	(* We haven't made any choices at this point, so we backtrack
+	   up to our parent if we fail *)
 	| None -> None
 	| Some tree -> Some (KRoot (G.Host h, tree)))
     | sw :: path -> 
@@ -60,7 +62,8 @@ and
       | new_sw' -> 
 	(match build_k_tree_from_path path regex n k fail_set topo with
 	  (* If we fail then we need to pick a new path *)
-	  | None -> None
+	  | None -> let bad_path = Intersection(regex, Comp (Sequence(Const new_sw', Star))) in
+		    build_k_children sw bad_path n k fail_set topo
 	  | Some tree -> (match build_k_children sw regex n (k + 1) ((sw, new_sw') :: fail_set) topo with
 	      (* If we fail here, either because we chose a bad ordering, or because we chose a bad path earlier *)
 	      | None -> None

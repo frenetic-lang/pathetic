@@ -2,7 +2,6 @@ open WordInterface
 
 open Platform0x04
 open NetCoreFT
-(* open FaultTolerance *)
 
 module G = Graph.Graph
 
@@ -16,21 +15,6 @@ module Routing = struct
   let h2 = G.Host 2
   open Pathetic.Regex
   open Pathetic.RegexUtils
-    (* Simple linear topo 101 <-> 102 <-> 103 *)
-  (* let make_topo () =  *)
-  (*   let topo = G.create () in *)
-  (*   let () = G.add_switch topo s101; *)
-  (*     G.add_switch topo s102; *)
-  (*     G.add_switch topo s103; *)
-  (*     G.add_host_edge topo h4 s101 (Int32.of_int 1); *)
-  (*     G.add_edge topo s101 (Int32.of_int 2) s102 (Int32.of_int 2); *)
-  (*     G.add_host_edge topo h5 s102 (Int32.of_int 1); *)
-  (*     G.add_edge topo s102 (Int32.of_int 2) s101 (Int32.of_int 2); *)
-  (*     G.add_edge topo s102 (Int32.of_int 3) s103 (Int32.of_int 2); *)
-  (*     G.add_host_edge topo h6 s103 (Int32.of_int 1); *)
-  (*     G.add_edge topo s103 (Int32.of_int 2) s102 (Int32.of_int 3); *)
-  (*   in *)
-  (*   topo *)
 
   let (policy, push) = Lwt_stream.create ()
     
@@ -38,8 +22,6 @@ module Routing = struct
     <+>
       RegPol (All, (Const h2 <.> Star <.> Const h1), 0)
 
-  (** Composes learning and routing policies, which together form
-      mac-learning. *)      
   let () = let pol = (compile_regex test_regex (DiamondTopo.make_topo ())) in
 	   Printf.printf "%s\n" (policy_to_string pol);
 	   push (Some pol)
