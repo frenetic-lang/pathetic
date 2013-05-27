@@ -583,6 +583,27 @@ let capabilities_rec f c =
   in
   f x x0 x1 x2 x3 x4 x5
 
+type portState = { link_down : bool; blocked : bool; live : bool }
+
+type portDesc = { port_no : portId;
+		  (* hw_addr : Word48.t; *)
+		  (* name; *)
+		  (* config; *)
+		  state : portState
+		  (* curr; *)
+		  (* advertised; *)
+		  (* supported; *)
+		  (* peer; *)
+		  (* curr_speed; *)
+		  (* max_speed *) }
+
+type portReason =
+  | PortAdd 
+  | PortDelete
+  | PortModify
+
+type portStatus = { reason : portReason; desc : portDesc }
+
 (** val flow_stats : capabilities -> bool **)
 
 let flow_stats x = x.flow_stats
@@ -702,6 +723,7 @@ type message =
 | GroupModMsg of groupMod
 | PacketInMsg of packetIn
 | PacketOutMsg of packetOut
+| PortStatusMsg of portStatus
 | BarrierRequest
 | BarrierReply
 

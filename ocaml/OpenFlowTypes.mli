@@ -299,6 +299,17 @@ val capabilities_rec :
   (bool -> bool -> bool -> bool -> bool -> bool -> bool -> 'a1) ->
   capabilities -> 'a1
 
+type portState = { link_down : bool; blocked : bool; live : bool }
+
+type portDesc = { port_no : portId; state : portState }
+
+type portReason =
+  | PortAdd
+  | PortDelete
+  | PortModify
+
+type portStatus = { reason : portReason; desc : portDesc }
+
 val flow_stats : capabilities -> bool
 
 val table_stats : capabilities -> bool
@@ -364,6 +375,7 @@ type message =
 | GroupModMsg of groupMod
 | PacketInMsg of packetIn
 | PacketOutMsg of packetOut
+| PortStatusMsg of portStatus
 | BarrierRequest
 | BarrierReply
 

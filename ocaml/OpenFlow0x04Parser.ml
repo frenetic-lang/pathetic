@@ -72,6 +72,7 @@ let ofpp_any = 0xffffffffl
 (* Not in the spec, comes from C headers. :rolleyes: *)
 let ofpg_all = 0xfffffffcl
 let ofpg_any = 0xffffffffl
+let ofp_eth_alen = 6          (* Bytes in an Ethernet address. *)
 
 (* OKAY *)
 cenum ofp_oxm_class {
@@ -144,8 +145,70 @@ cstruct ofp_switch_features {
 
 
 (* MISSING: ofp_port_config *)
-(* MISSING: ofp_port_state *)
 (* MISSING: ofp_port_features *)
+
+cstruct ofp_port_stats_request {
+  uint32_t port_no;
+  uint8_t pad[4]
+} as big_endian
+
+(* Body of reply to OFPMP_PORT request. If a counter is unsupported, set
+* the field to all ones. *)
+cstruct ofp_port_stats {
+  uint32_t port_no;
+  uint8_t pad[4]; (* Align to 64-bits. *)
+  uint64_t rx_packets; (* Number of received packets. *)
+  uint64_t tx_packets; (* Number of transmitted packets. *)
+  uint64_t rx_bytes; (* Number of received bytes. *)
+  uint64_t tx_bytes; (* Number of transmitted bytes. *)
+  uint64_t rx_dropped; (* Number of packets dropped by RX. *)
+  uint64_t tx_dropped; (* Number of packets dropped by TX. *)
+  uint64_t rx_errors; (* Number of receive errors. This is a super-set
+			 of more specific receive errors and should be
+			 greater than or equal to the sum of all
+			 rx_*_err values. *)
+  uint64_t tx_errors; (* Number of transmit errors. This is a super-set
+			 of more specific transmit errors and should be
+			 greater than or equal to the sum of all
+			 tx_*_err values (none currently defined.) *)
+  uint64_t rx_frame_err; (* Number of frame alignment errors. *)
+  uint64_t rx_over_err; (* Number of packets with RX overrun. *)
+  uint64_t rx_crc_err; (* Number of CRC errors. *)
+  uint64_t collisions; (* Number of collisions. *)
+  uint32_t duration_sec; (* Time port has been alive in seconds. *)
+  uint32_t duration_nsec (* Time port has been alive in nanoseconds beyond
+			     duration_sec. *)
+} as big_endian
+
+cstruct ofp_port {
+  uint32_t port_no;
+  uint8_t pad[4];
+  uint8_t hw_addr[6];
+  uint8_t pad2[2]; (* Align to 64 bits. *)
+  uint8_t name[16]; (* OFP_MAX_PORT_NAME_LEN, Null-terminated *)
+  uint32_t config; (* Bitmap of OFPPC_* flags. *)
+  uint32_t state; (* Bitmap of OFPPS_* flags. *)
+  (* Bitmaps of OFPPF_* that describe features. All bits zeroed if
+   * unsupported or unavailable. *)
+  uint32_t curr; (* Current features. *)
+  uint32_t advertised; (* Features being advertised by the port. *)
+  uint32_t supported; (* Features supported by the port. *)
+  uint32_t peer; (* Features advertised by peer. *)
+  uint32_t curr_speed; (* Current port bitrate in kbps. *)
+  uint32_t max_speed (* Max port bitrate in kbps *)
+} as big_endian
+
+cenum ofp_port_reason {
+  OFPPR_ADD;
+  OFPPR_DELETE;
+  OFPPR_MODIFY
+} as uint8_t
+
+cstruct ofp_port_status {
+  uint8_t reason;               (* One of OFPPR_* *)
+  uint8_t pad[7]
+} as big_endian
+
 
 (* MISSING: ofp_ queues *)
 
@@ -335,6 +398,7 @@ cstruct ofp_instruction_experimenter {
                                    as in struct ofp_experimenter_header. *)
     (* Experimenter-defined arbitrary additional data. *)
 } as big_endian
+
 
 cenum ofp_group_type {
   OFPGC_ALL = 0; (* All (multicast/broadcast) group. *)
@@ -1024,6 +1088,64 @@ module Features = struct
 
 end
 
+
+module PortState = struct
+
+  let parse bits : portState =
+    { link_down = test_bit 0 bits;
+      blocked = test_bit 1 bits;
+      live = test_bit 2 bits
+    }
+end
+
+module PortDesc = struct
+    
+  let parse (bits : Cstruct.t) : portDesc =
+    let port_no = get_ofp_port_port_no bits in
+    let _ = get_ofp_port_pad bits in
+    let hw_addr = get_ofp_port_hw_addr bits in
+    let _ = get_ofp_port_pad2 bits in
+    let name = get_ofp_port_name bits in
+    let config = get_ofp_port_config bits in
+    let state = PortState.parse (get_ofp_port_state bits) in
+    let curr = get_ofp_port_curr bits in
+    let advertised = get_ofp_port_advertised bits in
+    let supported = get_ofp_port_supported bits in
+    let peer = get_ofp_port_peer bits in
+    let curr_speed = get_ofp_port_curr_speed bits in
+    let max_speed = get_ofp_port_max_speed bits in
+    { port_no;
+      (* hw_addr; *)
+      (* name; *)
+      (* config; *)
+      state
+      (* curr; *)
+      (* advertised; *)
+      (* supported; *)
+      (* peer; *)
+      (* curr_speed; *)
+      (* max_speed *) }
+end
+
+module PortReason = struct
+
+  let parse bits : portReason =
+    match (int_to_ofp_port_reason bits) with
+      | Some OFPPR_ADD -> PortAdd
+      | Some OFPPR_DELETE -> PortDelete
+      | Some OFPPR_MODIFY -> PortModify
+end
+
+module PortStatus = struct
+
+  let parse (bits : Cstruct.t) : portStatus =
+    let reason = PortReason.parse (get_ofp_port_status_reason bits) in 
+    let _ = get_ofp_port_status_pad bits in
+    let desc = PortDesc.parse bits in
+    { reason;
+      desc }
+end
+
 module PacketIn = struct
 
  cenum reasonType {
@@ -1205,8 +1327,8 @@ module Message = struct
         | Some FEATURES_RESP -> FeaturesReply (Features.parse body_bits)
         | Some PACKET_IN -> PacketInMsg (PacketIn.parse body_bits)
 	| Some ECHO_REQ -> EchoRequest body_bits
-        | _ -> raise (Unparsable "unrecognized message code")
-
+	| Some PORT_STATUS -> PortStatusMsg (PortStatus.parse body_bits)
+        | _ -> raise (Unparsable (Printf.sprintf "unrecognized message code %d" typ))
 end
 
 
