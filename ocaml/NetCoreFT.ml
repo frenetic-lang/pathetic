@@ -13,13 +13,15 @@ module type HANDLERS = sig
   val get_packet_handler : 
     NetCoreEval0x04.id -> switchId -> portId -> packet -> unit
 
+  val get_port_status_handler : switchId -> portId -> portState -> unit
+
 end
 
 module MakeNetCoreMonad
   (Platform : PLATFORM) 
   (Handlers : HANDLERS) = struct
 
-  type state = { policy : pol; switches : switchId list }
+  type state = { policy : pol; switches : switchId list; push_stream : switchId -> portId -> portState -> unit}
 
   let policy x = x.policy
     
@@ -85,6 +87,9 @@ module MakeNetCoreMonad
   let handle_get_packet id switchId portId pkt : unit m = fun state ->
     Lwt.return (Handlers.get_packet_handler id switchId portId pkt, state)
 
+  let handle_port_status switchId portId status : unit m = fun state ->
+    Lwt.return (Handlers.get_port_status_handler switchId portId status, state)
+
   let run (init : state) (action : 'a m) : 'a Lwt.t = 
     (** TODO(arjun): kill threads etc. *)
     Lwt.async accept_switch_thread;
@@ -106,10 +111,11 @@ module MakeDynamic
   (* The controller is written in Coq *)
   module Controller = NetCoreController0x04.Make (NetCoreMonad)
 
-  let start_controller policy_stream =
+  let start_controller policy_stream return_stream =
     let init_state = { 
       NetCoreMonad.policy = drop_all_packets; 
-      NetCoreMonad.switches = []
+      NetCoreMonad.switches = [];
+      NetCoreMonad.push_stream = return_stream
     } in
     let policy_stream = Lwt_stream.map (fun v -> Policy v) policy_stream in
     let event_stream = Lwt_stream.map (fun v -> Event v)
@@ -276,6 +282,9 @@ module Make (Platform : PLATFORM) = struct
     let get_packet_handler queryId switchId portId packet = 
       printf "[NetCoreFT.ml] Got packet from %Ld\n" switchId;
         (Hashtbl.find get_pkt_handlers queryId) switchId portId packet
+
+    let get_port_status_handler switchId (portId : portId) status =
+      printf "[NetCoreFT.ml] Got port status update from %Ld %ld\n" switchId portId;
   end
           
   module Controller = MakeDynamic (Platform) (Handlers)
@@ -284,13 +293,13 @@ module Make (Platform : PLATFORM) = struct
     Hashtbl.clear get_pkt_handlers;
     next_id := 0
 
-  let start_controller (pol : policy Lwt_stream.t) : unit Lwt.t = 
+  let start_controller (pol : policy Lwt_stream.t) push_stream : unit Lwt.t = 
     Controller.start_controller
       (Lwt_stream.map 
          (fun pol1 -> 
             printf "[NetCoreFT.ml] got a new policy%!\n";
             clear_handlers (); 
             desugar_pol pol1)
-         pol)
+         pol) push_stream
 
 end

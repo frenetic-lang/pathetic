@@ -189,7 +189,7 @@ module type NETCORE_MONAD =
   
   val ret : 'a1 -> 'a1 m
 
-  type state = { policy : pol; switches : switchId list }
+  type state = { policy : pol; switches : switchId list; push_stream : switchId -> portId -> portState -> unit }
 
   (** val policy : ncstate -> pol **)
 
@@ -210,6 +210,9 @@ module type NETCORE_MONAD =
   val forever : unit m -> unit m
   
   val handle_get_packet : id -> switchId -> portId -> packet -> unit m
+
+  val handle_port_status : switchId -> portId -> portState -> unit m
+
  end
 
 module Make = 
@@ -245,7 +248,7 @@ module Make =
   let set_policy (pol0 : pol) =
     Monad.bind Monad.get (fun st ->
       let switch_list = st.Monad.switches in
-      Monad.bind (Monad.put { Monad.policy = pol0; Monad.switches = switch_list })
+      Monad.bind (Monad.put {st with Monad.policy = pol0; Monad.switches = switch_list })
         (fun x ->
         Monad.bind (sequence (List.map (fun sw -> config_commands pol0 sw 0) switch_list))
           (fun x0 -> Monad.ret ())))
@@ -258,7 +261,7 @@ module Make =
         List.filter (fun swId' ->
           if Word64.eq_dec swId swId' then false else true) st.Monad.switches
       in
-      Monad.bind (Monad.put { Monad.policy = st.Monad.policy; Monad.switches = switch_list })
+      Monad.bind (Monad.put { st with Monad.switches = switch_list })
         (fun x -> Monad.ret ()))
   
   (** val handle_switch_connected : switchId -> unit Monad.m **)
@@ -266,7 +269,7 @@ module Make =
   let handle_switch_connected swId =
     Monad.bind Monad.get (fun st ->
       Monad.bind
-        (Monad.put { Monad.policy = st.Monad.policy; Monad.switches = (swId::st.Monad.switches) })
+        (Monad.put { st with Monad.switches = (swId::st.Monad.switches) })
         (fun x ->
         Monad.bind (config_commands st.Monad.policy swId 0) (fun x0 -> Monad.ret ())))
   
@@ -290,6 +293,12 @@ module Make =
       let outs = classify policy (packetIn_to_in swId pk) in
       sequence (List.map send_output outs))
   
+
+  let handle_port_status swId ps = 
+    let {reason; desc} = ps in
+    let {port_no; state} = desc in
+    Monad.bind Monad.get (fun st -> Monad.handle_port_status swId port_no state)
+
   (** val handle_event : event -> unit Monad.m **)
   
   let handle_event = function
@@ -303,6 +312,7 @@ module Make =
     Printf.printf "[NetCoreController0x04.ml] SwitchMessage event %Ld\n%!" swId;
     (match msg with
      | PacketInMsg pktIn -> handle_packet_in swId pktIn
+     | PortStatusMsg ps -> handle_port_status swId ps
      | _ -> Monad.ret ())
   
   (** val main : unit Monad.m **)

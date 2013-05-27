@@ -20,6 +20,8 @@ module Routing = struct
     *)
 
   let (policy, push) = Lwt_stream.create ()
+  let (return_stream, return_push') = Lwt_stream.create ()
+  let return_push swId portId status = return_push' (Some (swId,portId,status))
 
   let ints_to_ipv4 (a,b,c,d) =
     let (|||) x y = Int32.logor x y in
@@ -65,7 +67,7 @@ module Make (Platform : PLATFORM) = struct
 
   module Controller = NetCoreFT.Make (Platform)
 
-  let start () = Controller.start_controller Routing.policy
+  let start () = Controller.start_controller Routing.policy Routing.return_push
 
 end
 

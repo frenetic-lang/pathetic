@@ -39,7 +39,7 @@ module type NETCORE_MONAD =
   
   val ret : 'a1 -> 'a1 m
 
-  type state = { policy : pol; switches : switchId list }
+  type state = { policy : pol; switches : switchId list; push_stream : switchId -> portId -> portState -> unit }
 
   val policy : state -> pol
 
@@ -56,6 +56,9 @@ module type NETCORE_MONAD =
   val forever : unit m -> unit m
   
   val handle_get_packet : id -> switchId -> portId -> packet -> unit m
+
+  val handle_port_status : switchId -> portId -> portState -> unit m
+
  end
 
 module Make : 
