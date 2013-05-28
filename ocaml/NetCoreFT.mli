@@ -60,6 +60,6 @@ val desugar_pred : predicate -> NetCoreEval0x04.pred
 val desugar_pol : policy -> NetCoreEval0x04.pol
 
 module Make : functor (Platform : PLATFORM) -> sig
-  val start_controller : policy Lwt_stream.t -> unit Lwt.t
+  val start_controller : policy Lwt_stream.t -> (switchId -> portId -> portState -> unit) -> unit Lwt.t
 end
 

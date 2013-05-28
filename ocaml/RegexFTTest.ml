@@ -21,7 +21,7 @@ module Routing = struct
 
   let (policy, push) = Lwt_stream.create ()
   let (return_stream, return_push') = Lwt_stream.create ()
-  let return_push swId portId status = return_push' (Some (swId,portId,status))
+  let return_push (swId : int64) (portId : int32) (status : portState) = return_push' (Some (swId,portId,status))
 
   let ints_to_ipv4 (a,b,c,d) =
     let (|||) x y = Int32.logor x y in
@@ -58,9 +58,20 @@ module Routing = struct
   let group_htbl_to_str ghtbl =
     String.concat "" (H.fold (fun sw groups acc -> (Printf.sprintf "%Ld -> [\n%s]\n" sw (groups_to_string groups)):: acc) ghtbl [])
 
+  let rec port_status_loop () =
+    Lwt_stream.map (fun x -> match x with 
+      | (swId, portId, (status : portState)) ->
+	Printf.printf "[RegexFTTest] Got port update from %Ld %ld\n%!" swId portId
+      | _ -> ())
+      return_stream
+
+
   let () = let pol = compile_ft_to_nc make_policy (D.make_topo ()) in
 	   Printf.printf "%s\n" (policy_to_string pol);
-	   push (Some pol)
+	   push (Some pol);
+	   let _ = port_status_loop () in
+	   ()
+
 end
 
 module Make (Platform : PLATFORM) = struct
