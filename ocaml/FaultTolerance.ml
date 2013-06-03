@@ -32,6 +32,8 @@ let shortest_path_fail_set re sw topo fail_set =
   G.del_links topo' fail_set;
   List.tl (shortest_path_re re sw topo')
 
+let rec next_ordering lst = failwith "NYI: next_ordering"; lst
+
 (* Initial version: no backtracking *)
 (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
 let rec build_k_tree_from_path path regex n k fail_set topo = 
@@ -45,29 +47,34 @@ let rec build_k_tree_from_path path regex n k fail_set topo =
 	| None -> None
 	| Some tree -> Some (KRoot (G.Host h, tree)))
     | sw :: path -> 
-      (match build_k_children sw (deriv (Const sw) regex) n k fail_set topo with
+      (match build_k_children sw (deriv (Const sw) regex) n k fail_set topo Star with
 	(* We haven't made any choices at this point, so we backtrack
 	   up to our parent if we fail *)
 	| None -> None
 	| Some children -> Some (KTree(sw, children)))
 and
-    (* Build (n - k) backup paths at 'sw' according to 'regex', avoiding links in 'fail_set'. *)
-    build_k_children sw regex n k fail_set topo =
+    (* Build (n - k) backup paths at 'sw' according to 'regex',
+       avoiding links in 'fail_set'. Order regex restricts the nodes
+       we're allowed to use for the primary path and is used for
+       backtracking *)
+    build_k_children sw regex n k fail_set topo order_regex =
   Printf.printf "[FaultTolerance.ml] build_k_children %s %d %d [%s]\n%!" (regex_to_string regex) n k (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%s,%s)" (G.node_to_string a) (G.node_to_string b)) fail_set));
   if k > n then Some [] 
   else
-    let path = shortest_path_fail_set regex sw topo fail_set in
+    let path = shortest_path_fail_set (Intersection(regex, order_regex)) sw topo fail_set in
     match (List.hd path) with
       | G.Host h -> Some [KLeaf (G.Host h)]
-      | new_sw' -> 
-	(match build_k_tree_from_path path regex n k fail_set topo with
-	  (* If we fail then we need to pick a new path *)
-	  | None -> let bad_path = Intersection(regex, Comp (Sequence(Const new_sw', Star))) in
-		    build_k_children sw bad_path n k fail_set topo
-	  | Some tree -> (match build_k_children sw regex n (k + 1) ((sw, new_sw') :: fail_set) topo with
-	      (* If we fail here, either because we chose a bad ordering, or because we chose a bad path earlier *)
-	      | None -> None
-	      | Some children -> Some (tree :: children)))
+      | new_sw' -> let bad_choice = Comp (Sequence(Const new_sw', Star)) in
+		   (match build_k_tree_from_path path regex n k fail_set topo with
+		     (* If we fail then we need to pick a new path *)
+		     | None -> let bad_path = Intersection(regex, bad_choice) in
+			       build_k_children sw bad_path n k fail_set topo order_regex
+		     | Some tree -> (match build_k_children sw regex n (k + 1) ((sw, new_sw') :: fail_set) topo Star with
+	      (* If we fail here, either because we chose a bad
+		 ordering, or because we chose a bad path earlier. We try
+		 all orderings, then backtrack to find a new path *)
+			 | None -> build_k_children sw regex n k fail_set topo (Intersection(order_regex, bad_choice))
+			 | Some children -> Some (tree :: children)))
 
 
 let build_k_tree n regex topo = 
