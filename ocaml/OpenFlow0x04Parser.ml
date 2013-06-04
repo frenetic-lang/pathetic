@@ -1140,7 +1140,7 @@ module PortStatus = struct
 
   let parse (bits : Cstruct.t) : portStatus =
     let reason = PortReason.parse (get_ofp_port_status_reason bits) in 
-    let _ = get_ofp_port_status_pad bits in
+    let bits = Cstruct.shift bits sizeof_ofp_port_status in
     let desc = PortDesc.parse bits in
     { reason;
       desc }
