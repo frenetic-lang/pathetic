@@ -18,16 +18,20 @@ type k_tree =
   | KRoot of G.node * k_tree
 
 exception NoTree of string
-  
+
+let print_list prntr lst = String.concat "; " (List.map prntr lst)
+let print_tuple prntr1 prntr2 tpl = Printf.sprintf "(%s,%s)" (prntr1 (fst tpl)) (prntr2 (snd tpl))
+let print_tuple1 prntr tpl = Printf.sprintf "(%s,%s)" (prntr (fst tpl)) (prntr (snd tpl))
+
 let rec k_tree_to_string tree = match tree with
   | KLeaf n -> 
     Printf.sprintf "KLeaf (%s)" (G.node_to_string n)
   | KTree(n, children) -> 
-    Printf.sprintf "KTree(%s, [ %s ])" (G.node_to_string n) (String.concat "; " (List.map k_tree_to_string children))
+    Printf.sprintf "KTree(%s, [ %s ])" (G.node_to_string n) (print_list k_tree_to_string children)
 
 let shortest_path_fail_set re sw topo fail_set =
   Printf.printf "[FaultTolerance.ml] shortest_path_fail_set %s %s %s\n" (regex_to_string re) (G.node_to_string sw)
-    (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%s,%s)" (G.node_to_string a) (G.node_to_string b)) fail_set));
+    (print_list (print_tuple1 G.node_to_string) fail_set);
   let topo' = G.copy topo in
   G.del_links topo' fail_set;
   List.tl (shortest_path_re re sw topo')
@@ -37,7 +41,7 @@ let rec next_ordering lst = failwith "NYI: next_ordering"; lst
 (* Initial version: no backtracking *)
 (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
 let rec build_k_tree_from_path path regex n k fail_set topo = 
-  Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s %s %d %d [%s]\n%!" (String.concat ";" (List.map G.node_to_string path)) (regex_to_string regex) n k (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%s,%s)" (G.node_to_string a) (G.node_to_string b)) fail_set));
+  Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s %s %d %d [%s]\n%!" (print_list G.node_to_string path) (regex_to_string regex) n k (print_list (print_tuple1 G.node_to_string) fail_set);
   match path with
     | sw :: [ h ] -> Some (KTree(sw, [KLeaf h]))
     | G.Host h :: path -> 
@@ -58,7 +62,7 @@ and
        we're allowed to use for the primary path and is used for
        backtracking *)
     build_k_children sw regex n k fail_set topo order_regex =
-  Printf.printf "[FaultTolerance.ml] build_k_children %s %d %d [%s]\n%!" (regex_to_string regex) n k (String.concat ";" (List.map (fun (a,b) -> Printf.sprintf "(%s,%s)" (G.node_to_string a) (G.node_to_string b)) fail_set));
+  Printf.printf "[FaultTolerance.ml] build_k_children %s %d %d [%s]\n%!" (regex_to_string regex) n k (print_list (print_tuple1 G.node_to_string) fail_set);
   if k > n then Some [] 
   else
     let path = shortest_path_fail_set (Intersection(regex, order_regex)) sw topo fail_set in
@@ -116,9 +120,7 @@ type tagged_k_tree =
 let rec tagged_k_tree_to_string tree = match tree with
   | KLeaf_t h -> Printf.sprintf "KLeaf_t %s" (G.node_to_string h)
   | KTree_t(sw, children) -> Printf.sprintf "KTree(%s, [ %s ])" (G.node_to_string sw)
-    (String.concat "; " (List.map 
-			   (fun (k,t) -> Printf.sprintf "(%d,%s)" k (tagged_k_tree_to_string t)) 
-			   children))
+    (print_list (print_tuple (Printf.sprintf "%d") tagged_k_tree_to_string) children)
   | KRoot_t(h, tree) -> Printf.sprintf "KRoot_t %s (%s)" (G.node_to_string h) (tagged_k_tree_to_string tree)
 
 let rec tag_k_tree tree tag gensym = match tree with
