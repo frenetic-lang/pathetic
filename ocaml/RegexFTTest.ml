@@ -59,11 +59,11 @@ module Routing = struct
     String.concat "" (H.fold (fun sw groups acc -> (Printf.sprintf "%Ld -> [\n%s]\n" sw (groups_to_string groups)):: acc) ghtbl [])
 
   let rec port_status_loop () =
-    Lwt_stream.map (fun x -> match x with 
-      | (swId, portId, (status : portState)) ->
-	Printf.printf "[RegexFTTest] Got port update from %Ld %ld\n%!" swId portId
-      | _ -> ())
-      return_stream
+    Lwt_stream.map (fun (swId, portId, (status : portState)) ->
+      Printf.printf "[RegexFTTest] Got port update from %Ld %ld\n%!" swId portId;
+      (swId, portId, status))
+      return_stream;
+    ()
 
 
   let () = let pol = compile_ft_to_nc make_policy (D.make_topo ()) in
