@@ -130,13 +130,13 @@ module Graph : GRAPH =
       with Queue.Empty -> raise (NoPath(node_to_string src, node_to_string dst))
 
     let shortest_path graph src dst = 
-      Printf.printf "shortest_path %s %s\n" (node_to_string src) (node_to_string dst);
+      (* Printf.printf "shortest_path %s %s\n" (node_to_string src) (node_to_string dst); *)
       try List.rev (bfs graph src dst) with 
 	| NoPath(s1,s2) -> Printf.printf "Couldn't find path in graph %s\n" (to_string graph);
 	  raise (NoPath(s1,s2))
 
     let get_ports topo s1 s2 = 
-      Printf.printf "get_ports %s %s\n" (node_to_string s1) (node_to_string s2);
+      (* Printf.printf "get_ports %s %s\n" (node_to_string s1) (node_to_string s2); *)
       let s1Tbl = try (H.find topo s1) with 
 	  Not_found -> raise (NotFound(Printf.sprintf "Can't find %s to get_ports to %s\n" 
 					 (node_to_string s1) (node_to_string s2))) in

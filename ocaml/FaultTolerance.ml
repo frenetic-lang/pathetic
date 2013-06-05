@@ -30,7 +30,7 @@ let rec k_tree_to_string tree = match tree with
     Printf.sprintf "KTree(%s, [ %s ])" (G.node_to_string n) (print_list k_tree_to_string children)
 
 let shortest_path_fail_set re sw topo fail_set =
-  Printf.printf "[FaultTolerance.ml] shortest_path_fail_set %s %s %s\n" (regex_to_string re) (G.node_to_string sw)
+  (* Printf.printf "[FaultTolerance.ml] shortest_path_fail_set %s %s %s\n" (regex_to_string re) (G.node_to_string sw) *)
     (print_list (print_tuple1 G.node_to_string) fail_set);
   let topo' = G.copy topo in
   G.del_links topo' fail_set;
@@ -181,7 +181,7 @@ let next_port_from_k_tree_root sw topo pathTag tree =
     To(stamp_path_tag pathTag tag, p1)
 
 let policy_from_k_tree pr tree topo path_tag tag =  
-  Printf.printf "[FaulTolerance.ml] policy_from_k_tree %s\n%!" (tagged_k_tree_to_string tree);
+  (* Printf.printf "[FaulTolerance.ml] policy_from_k_tree %s\n%!" (tagged_k_tree_to_string tree); *)
   match tree with
     | KRoot_t(G.Host h, KTree_t(G.Switch sw, children)) -> 
       let sw' = G.Switch sw in

@@ -44,16 +44,16 @@ let bfs graph re =
 
 
 let expand_re re topo = 
-  Printf.printf "expand_re %s\n" (regex_to_string re);
+  (* Printf.printf "expand_re %s\n" (regex_to_string re); *)
   try let return = List.rev (bfs topo re) in
-      Printf.printf "expand_re returned %s\n" (String.concat ";" (List.map G.node_to_string return));
+      (* Printf.printf "expand_re returned %s\n" (String.concat ";" (List.map G.node_to_string return)); *)
       return
   with 
     | G.NoPath(s1,s2) -> Printf.printf "Couldn't find path for %s in graph\n\t%s\n" (regex_to_string re) (G.to_string topo);
       raise (G.(NoPath("unknown","unknown")))
 
 let shortest_path_re re src topo = 
-  Printf.printf "shortest_path_re %s %s\n" (regex_to_string re) (G.node_to_string src);
+  (* Printf.printf "shortest_path_re %s %s\n" (regex_to_string re) (G.node_to_string src); *)
   let q = Queue.create () in
   let re' = deriv (Const src) re in
   (match is_empty re' with
