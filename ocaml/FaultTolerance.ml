@@ -41,7 +41,7 @@ let rec next_ordering lst = failwith "NYI: next_ordering"; lst
 (* Initial version: no backtracking *)
 (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
 let rec build_k_tree_from_path path regex n k fail_set topo = 
-  Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s %s %d %d [%s]\n%!" (print_list G.node_to_string path) (regex_to_string regex) n k (print_list (print_tuple1 G.node_to_string) fail_set);
+  (* Printf.printf "[FaultTolerance.ml] build_k_tree_from_path %s %s %d %d [%s]\n%!" (print_list G.node_to_string path) (regex_to_string regex) n k (print_list (print_tuple1 G.node_to_string) fail_set); *)
   match path with
     | sw :: [ h ] -> Some (KTree(sw, [KLeaf h]))
     | G.Host h :: path -> 
@@ -62,7 +62,7 @@ and
        we're allowed to use for the primary path and is used for
        backtracking *)
     build_k_children sw regex n k fail_set topo order_regex =
-  Printf.printf "[FaultTolerance.ml] build_k_children %s %d %d [%s]\n%!" (regex_to_string regex) n k (print_list (print_tuple1 G.node_to_string) fail_set);
+  (* Printf.printf "[FaultTolerance.ml] build_k_children %s %d %d [%s]\n%!" (regex_to_string regex) n k (print_list (print_tuple1 G.node_to_string) fail_set); *)
   if k > n then Some [] 
   else
     let path = shortest_path_fail_set (Intersection(regex, order_regex)) sw topo fail_set in
@@ -156,7 +156,7 @@ let next_hop_from_k_tree sw topo tree =
 
 (* Converts a k fault tolerant tree into a NetCore policy *)
 let rec policy_from_k_tree' inport tree topo path_tag tag = 
-  Printf.printf "[FaulTolerance.ml] policy_from_k_tree' %ld %s\n%!" inport (tagged_k_tree_to_string tree);
+  (* Printf.printf "[FaulTolerance.ml] policy_from_k_tree' %ld %s\n%!" inport (tagged_k_tree_to_string tree); *)
   match tree with
     | KLeaf_t h -> 
       trivial_pol

@@ -88,6 +88,7 @@ module MakeNetCoreMonad
     Lwt.return (Handlers.get_packet_handler id switchId portId pkt, state)
 
   let handle_port_status switchId portId status : unit m = fun state ->
+    Printf.printf "pushing port status onto stream\n%!";
     Lwt.return (state.push_stream switchId portId status, state)
 
   let run (init : state) (action : 'a m) : 'a Lwt.t = 

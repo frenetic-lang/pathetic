@@ -15,8 +15,10 @@ for i in `seq 1 10`; do
   for fl in yes no; do
     sudo FAIL_LINK=$fl ./run_failover.sh &
     sleep 5
-    ./run_pathetic.sh
+    ./run_pathetic.sh &
+    NC_PID=$!
     sleep 50
+    kill ${NC_PID}
     cp /tmp/iperf-client.log ~/failover_results/fail_link_$fl/iperf-client-$i.log
   done
 done

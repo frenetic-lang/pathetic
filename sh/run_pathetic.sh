@@ -1,2 +1,2 @@
 #!/bin/sh
-cd /home/openflow/pathetic/ocaml && ./Main_OpenFlow0x04.byte
+cd ~/pathetic/ocaml && ./Main_OpenFlow0x04.byte
