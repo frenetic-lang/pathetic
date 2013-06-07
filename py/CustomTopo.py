@@ -170,9 +170,34 @@ class Diamond(Topo):
         self.addLink("s2", "s4", 3, 2)
         self.addLink("s3", "s4", 3, 3)
                          
+class IDS(Topo):
+
+    def __init__(self):
+
+        super(IDS, self).__init__()
+
+        self.addSwitch("s1")
+        self.addSwitch("s2")
+        self.addSwitch("s3")
+        self.addSwitch("s4")
+        self.addSwitch("s5") # IDS
+        self.addHost("h1")
+        self.addHost("h2")
+
+        self.addLink("h1", "s1", 1, 1)
+        self.addLink("s4", "h2", 1, 1)
+        self.addLink("s1", "s2", 2, 1)
+        self.addLink("s1", "s3", 3, 1)
+        self.addLink("s2", "s3", 2, 2)
+        self.addLink("s2", "s4", 3, 2)
+        self.addLink("s3", "s4", 3, 3)
+        self.addLink("s2", "s5", 4, 1)
+        self.addLink("s3", "s5", 4, 2)
+                         
 topos = { 
   'wattsstrogatz': ( WattsStrogatzTopology ),
   'fattree': ( FattreeTopology ),
   'waxman': ( WaxmanTopology ),
-  'diamond': (Diamond)
+  'diamond': (Diamond),
+  'ids': (IDS)
 }
