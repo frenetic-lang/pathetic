@@ -16,18 +16,20 @@ module Q = Queue
 (* Need to add constraints to avoid routing through hosts *)
 let rec bfs' graph queue =
   let (sw, re, path) = (Q.take queue) in
-  (* Printf.printf "bfs' %s %s %s\n" (G.node_to_string sw) (regex_to_string re)  *)
-  (*   (String.concat ";" (List.map G.node_to_string path)); *)
+  Printf.printf "bfs' %s %s %s \n%!" (G.node_to_string sw) (regex_to_string re)
+    (String.concat ";" (List.map G.node_to_string path));
   match (match_path re [Const sw]) with
     | true -> path
     | false -> 
+      let nbrs = (G.get_nbrs graph sw) in
       List.iter (fun x -> 
-	let re' = deriv (Const x) re in
-	match is_empty re' with
-	  | false ->
-	    Q.add (x, re', x :: path) queue
-	  | true -> ()) (G.get_nbrs graph sw); 
-      G.del_node graph sw;
+	if List.mem x path then () else
+	  let re' = deriv (Const x) re in
+	  match is_empty re' with
+	    | false ->
+	      Q.add (x, re', x :: path) queue
+	    | true -> ()) 
+	nbrs; 
       bfs' graph queue
 
 
