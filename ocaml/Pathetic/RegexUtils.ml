@@ -13,6 +13,13 @@ open NetCoreFT
 
 module Q = Queue
 
+let rec seen_link_before sw1 sw2 path =
+  match path with 
+    | [] -> false
+    | [_] -> false
+    | a :: b :: path -> if a = sw1 & b = sw2 then true else
+	seen_link_before sw1 sw2 (b :: path)
+
 (* Need to add constraints to avoid routing through hosts *)
 let rec bfs' graph queue =
   let (sw, re, path) = (Q.take queue) in
@@ -23,7 +30,7 @@ let rec bfs' graph queue =
     | false -> 
       let nbrs = (G.get_nbrs graph sw) in
       List.iter (fun x -> 
-	if List.mem x path then () else
+	if seen_link_before sw x path then () else
 	  let re' = deriv (Const x) re in
 	  match is_empty re' with
 	    | false ->
@@ -46,7 +53,6 @@ let bfs graph re =
 
 
 let expand_re re topo = 
-  (* Printf.printf "expand_re %s\n" (regex_to_string re); *)
   try let return = List.rev (bfs topo re) in
       (* Printf.printf "expand_re returned %s\n" (String.concat ";" (List.map G.node_to_string return)); *)
       return
@@ -55,7 +61,7 @@ let expand_re re topo =
       raise (G.(NoPath("unknown","unknown")))
 
 let shortest_path_re re src topo = 
-  (* Printf.printf "shortest_path_re %s %s\n" (regex_to_string re) (G.node_to_string src); *)
+  Printf.printf "shortest_path_re %s %s %s\n" (regex_to_string re) (G.node_to_string src) (G.to_string topo);
   let q = Queue.create () in
   let re' = deriv (Const src) re in
   (match is_empty re' with
