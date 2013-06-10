@@ -44,6 +44,7 @@ type pol =
 | PoUnion of pol * pol
 | PoOpt of pred * act list
 
+val act_to_string : act -> string
 val pol_to_string : pol -> string
 val cls_to_string : (Pattern.pattern * (act list)) list -> string
 

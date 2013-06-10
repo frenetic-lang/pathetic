@@ -51,6 +51,8 @@ type policy =
   | LPar of predicate * action list
 
 val predicate_to_string : predicate -> string
+val action_to_string : action -> string
+
 val policy_to_string : policy -> string
 
 val desugar_act : action -> NetCoreEval0x04.act

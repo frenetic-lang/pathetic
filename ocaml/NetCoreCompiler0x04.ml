@@ -80,7 +80,21 @@ let compile_no_opt =
 
 (** val compile_opt : pol -> switchId -> act list coq_Classifier **)
 
+
+let get_groups ft = List.fold_left (fun acc (_, acts) ->
+  (List.fold_left (fun acc act -> match act with
+    | Group gid -> gid :: acc
+    | _ -> acc) [] acts) @ acc) [] ft
+
+let rec trim_gt ft gt = 
+  let groups = get_groups ft in
+  List.filter (fun (gid, _,_) -> List.mem gid groups) gt
+
 let compile_opt pol swid =
   (* compile_pol (fun x -> strip_empty_rules (elim_shadowed x)) (fun x -> strip_empty_rules (elim_shadowed x)) pol swid *)
-  compile_pol (fun x -> strip_empty_rules (elim_shadowed x)) (fun x -> strip_empty_rules (elim_shadowed x)) pol swid
+  (* MJR: We generate way too many group table entries. This is a hack
+     to eliminate the unused ones. The right way is to fix the compilation
+     alg, but not going to happen right now *)
+  let ft, gt = compile_pol (fun x -> strip_empty_rules (elim_shadowed x)) (fun x -> strip_empty_rules (elim_shadowed x)) pol swid in
+  (ft, trim_gt ft gt)
 

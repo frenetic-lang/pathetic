@@ -226,16 +226,21 @@ module Make =
   
   (** val config_commands : pol -> switchId -> unit Monad.m **)
 
+  let list_to_string prnter lst = 
+    String.concat ";" (List.map prnter lst)
+
   let groups_to_string groups =
-    String.concat ";\n" (List.map (fun (gid,_,acts) -> Printf.sprintf "\t%ld" gid) groups)
+    list_to_string (fun (gid,_,acts) -> Printf.sprintf "\t %ld %s" gid (list_to_string (list_to_string NetCoreEval0x04.act_to_string) acts)) groups
 
   let group_htbl_to_str ghtbl =
     String.concat "" (Hashtbl.fold (fun sw groups acc -> (Printf.sprintf "%Ld -> [\n%s]\n" sw (groups_to_string groups)):: acc) ghtbl [])
   
   let config_commands (pol0 :pol) swId tblId =
-    (* Printf.printf "[NetCoreController0x04.ml] config_commands %Ld %s\n%!" swId (pol_to_string pol0); *)
+(*     Printf.printf "[NetCoreController0x04.ml] config_commands %Ld %s\n%!" swId (pol_to_string pol0); *)
     let fm_cls, gm_cls = nc_compiler pol0 swId in
-    (* Printf.printf "[NetCoreController0x04.ml] installing ft of size %d %s\n%!" (List.length fm_cls) (cls_to_string fm_cls); *)
+    Printf.printf "[NetCoreController0x04.ml] installing ft of size %d %s\n%!" (List.length fm_cls) (cls_to_string fm_cls);
+    Printf.printf "[NetCoreController0x04.ml] installing gt of size %d %s\n%!" (List.length gm_cls) (groups_to_string gm_cls);
+
     sequence
       ((List.map (fun fm -> Monad.send swId Word32.zero (GroupModMsg fm))
 	  (delete_all_groups :: (group_mods_of_classifier gm_cls))) @
