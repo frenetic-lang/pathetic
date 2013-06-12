@@ -7,8 +7,8 @@ open Pathetic.Regex
 module H = Hashtbl
 module G = Graph.Graph
 
-(* module D = DiamondTopo *)
-module D = IDSTopo
+module D = DiamondTopo
+(* module D = IDSTopo *)
 
 module Routing = struct
 
@@ -41,10 +41,10 @@ module Routing = struct
 
   let from_to i j = And (SrcIP (make_host_ip i), DstIP (make_host_ip j))
 			   (* (DlType 0x800)) *)
-  (*let make_policy = RegUnion (RegPol (from_to 1 2, (Sequence (Const h1, Sequence (Star, Const h2))), 1),
-                            RegPol (from_to 2 1, (Sequence (Const h2, Sequence (Star, Const h1))), 1)) *)
-  let make_policy = RegUnion (RegPol (from_to 1 2, (Sequence (Const h1, Sequence (Star, (Sequence (Const ids, Sequence (Star, Const h2)))))), 1),
+  let make_policy = RegUnion (RegPol (from_to 1 2, (Sequence (Const h1, Sequence (Star, Const h2))), 1),
                             RegPol (from_to 2 1, (Sequence (Const h2, Sequence (Star, Const h1))), 1))
+  (* let make_policy = RegUnion (RegPol (from_to 1 2, (Sequence (Const h1, Sequence (Star, (Sequence (Const ids, Sequence (Star, Const h2)))))), 1), *)
+  (*                           RegPol (from_to 2 1, (Sequence (Const h2, Sequence (Star, Const h1))), 1)) *)
 
   let desugar_group_htbl tbl =
     Hashtbl.fold (fun sw swTbl acc -> 

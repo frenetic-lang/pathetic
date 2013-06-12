@@ -11,7 +11,7 @@ mkdir ~/failover_results/fail_link_no
 #    cp /tmp/iperf-client.log ~/failover_results/fail_link_$fl/iperf-client-$i.log
 #  done
 #done
-for i in `seq 1 10`; do
+for i in `seq 1 100`; do
   for fl in yes no; do
     echo "iteration " ${i} "started"
     sudo FAIL_LINK=$fl ./run_failover.sh &

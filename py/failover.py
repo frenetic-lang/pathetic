@@ -40,9 +40,9 @@ def run_iperf_server( net, srv ):
 
 def run_iperf_client( net, cli, srv, duration, volume ):
     if volume == 0:
-        cmd = "iperf -t %d -c %s -i .2 > /tmp/iperf-client.log 2>&1" % ( duration, str( srv.IP() ) )
+        cmd = "iperf -t %d -c %s -i .25 > /tmp/iperf-client.log 2>&1" % ( duration, str( srv.IP() ) )
     else:
-        cmd = "iperf -n %dM -c %s -i .2 > /tmp/iperf-client.log 2>&1" % ( volume, str( srv.IP() ) )
+        cmd = "iperf -n %dM -c %s -i .25 > /tmp/iperf-client.log 2>&1" % ( volume, str( srv.IP() ) )
     print
     print "*** Starting iperf client on %s " % ( str( cli ) )
     print "*** cmd: " + cmd
@@ -75,7 +75,7 @@ def testFailover( net, fail_link='yes', failat=20, duration=60, volume=100 ):
 
 def failover_test():
     """Example/test of fast failover"""
-    myTopo = IDS()
+    myTopo = Diamond()
     net = Mininet( topo=myTopo, autoStaticArp=True, \
                    switch=UserSwitch, \
                    controller=RemoteController )

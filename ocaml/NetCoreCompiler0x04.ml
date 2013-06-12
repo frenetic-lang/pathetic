@@ -90,11 +90,36 @@ let rec trim_gt ft gt =
   let groups = get_groups ft in
   List.filter (fun (gid, _,_) -> List.mem gid groups) gt
 
+
+let rec fix_inports groups port gt =
+  List.map (fun (gid, typ, bckts) ->
+    if List.mem gid groups then
+      (gid, typ, List.map (fun bckt -> List.map (fun act -> match act with
+	| Forward(md, OpenFlowTypes.PhysicalPort pt) -> if pt = (Int32.of_int port) then Forward(md, OpenFlowTypes.InPort) else act
+	| _ -> act) bckt) bckts)
+    else
+      (gid, typ, bckts)) gt
+
+(* Hack to support policies that require inport action *)
+(* invariant property of input flow/group table: each group is pointed
+   to by at most one rule *)
+let rec replace_inport ft gt = match ft with
+  | [] -> gt
+  | rl :: ft ->
+    let ptrn, acts = rl in
+    (match ptrn.PatternImplDef.ptrnInPort with
+      | Wildcard.WildcardAll -> replace_inport ft gt
+      | Wildcard.WildcardExact x -> 
+	let groups = (List.fold_left (fun acc act -> match act with
+	  | Group gid -> gid :: acc
+	  | _ -> acc) [] acts) in
+	replace_inport ft (fix_inports groups x gt))
+  
 let compile_opt pol swid =
   (* compile_pol (fun x -> strip_empty_rules (elim_shadowed x)) (fun x -> strip_empty_rules (elim_shadowed x)) pol swid *)
   (* MJR: We generate way too many group table entries. This is a hack
      to eliminate the unused ones. The right way is to fix the compilation
      alg, but not going to happen right now *)
   let ft, gt = compile_pol (fun x -> strip_empty_rules (elim_shadowed x)) (fun x -> strip_empty_rules (elim_shadowed x)) pol swid in
-  (ft, trim_gt ft gt)
+  (ft, replace_inport ft (trim_gt ft gt))
 
