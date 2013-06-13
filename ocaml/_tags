@@ -1,12 +1,15 @@
 true : use_menhir
-true : use_str
 <Pathetic/Regex.cmx> : for-pack(Pathetic)
 <Pathetic/RegexUtils.cmx> : for-pack(Pathetic)
 <Pathetic/Regex.cmo> : for-pack(Pathetic)
 <Pathetic/RegexUtils.cmo> : for-pack(Pathetic)
+<**/*.byte> : package(lwt), package(lwt.unix), package(cstruct)
+<**/*.d.byte> : package(lwt), package(lwt.unix), package(cstruct)
+<**/*.native> : package(lwt), package(lwt.unix), package(cstruct)
+<**/*.ml{,i}> : package(lwt), package(lwt.syntax), package(cstruct), package(cstruct.syntax), syntax(camlp4o)
 <*.d.byte> : package(cstruct), package(lwt), package(lwt.unix)
 <*.byte> : package(cstruct), package(lwt), package(lwt.unix)
 <*.native> : package(cstruct), package(lwt), package(lwt.unix)
 <**/*.ml{,i}> : package(cstruct),package(lwt),syntax(camlp4o),package(lwt.syntax)
-"OpenFlow0x04Parser.ml" : package(cstruct.syntax)
 "Packet_Parser.ml" : package(cstruct.syntax)
+<Main_OpenFlow0x04.*> : package(str)

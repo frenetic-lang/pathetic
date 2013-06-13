@@ -3,7 +3,7 @@
 open Printf
 open Cstruct
 open Cstruct.BE
-open OpenFlowTypes
+open OpenFlow0x04_Core
 open Misc
 open List
 open Packet_Parser

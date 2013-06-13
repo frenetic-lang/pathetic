@@ -8,8 +8,8 @@
     [PLATFORM]. But, see [NetCore] for a higher-level abstraction.
 *)
 open Lwt_unix
-open OpenFlowTypes
-open OpenFlow0x04Parser
+open OpenFlow0x04_Core
+open OpenFlow0x04
 
 (** Interface for all platforms. *)
 module type PLATFORM = sig

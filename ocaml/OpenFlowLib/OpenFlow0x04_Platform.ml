@@ -1,5 +1,5 @@
-open OpenFlowTypes
-open OpenFlow0x04Parser
+open OpenFlow0x04_Core
+open OpenFlow0x04
 
 open Lwt
 open Lwt_io
