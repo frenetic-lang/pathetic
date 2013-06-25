@@ -1,3 +1,8 @@
+FatTire: Fault Tolerating Regular Expressions
+================================
+
+FatTire is a language for specifying fault-tolerant network forwarding policies. For more details, see the paper: <http://www.cs.cornell.edu/~reitblatt/papers/fault-tolerance-hotsdn13.pdf>
+
 Building from Source
 ====================
 
@@ -7,6 +12,8 @@ Prerequisites
 - OCaml 4 or higher <http://caml.inria.fr/download.en.html>
 
 - OPAM <http://opam.ocamlpro.com>
+
+- Frenetic <http://github.com/frenetic-lang/frenetic>
 
 - The following OCaml libraries:
 

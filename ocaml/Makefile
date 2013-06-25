@@ -1,4 +1,4 @@
-LIBRARIES = OpenFlowLib
+# LIBRARIES = OpenFlowLib
 
 SUFFIXES = .a .cmxa .cma .d.cma
 
@@ -20,9 +20,9 @@ OCAMLFIND = ocamlfind
 %.a %.cmxa %.cma:
 	$(OCAMLBUILD) -no-links $@
 
-$(LIBRARIES):
-	$(foreach SUFFIX, $(SUFFIXES), \
-	    $(OCAMLBUILD) $(addsuffix $(SUFFIX),$@/$@);)
+# $(LIBRARIES):
+# 	$(foreach SUFFIX, $(SUFFIXES), \
+# 	    $(OCAMLBUILD) $(addsuffix $(SUFFIX),$@/$@);)
 
 all: $(LIBRARIES)
 	$(OCAMLBUILD) main.otarget
