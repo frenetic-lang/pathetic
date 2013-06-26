@@ -80,7 +80,7 @@ let rec compile_path1 pred path topo port = match path with
 	 [To ({unmodified with NetCoreEval0x04.modifyDlVlan=(Some None)}, p1)])
   | _ -> Pol (pred, [])
 
-let compile_path pred path topo (vid : WordInterface.Word16.t)  = match path with
+let compile_path pred path topo vid  = match path with
   | G.Host h1 :: G.Switch s :: [G.Host h2] -> 
     let (_,p1) = G.get_ports topo (G.Host h1) (G.Switch s) in 
     let (p2,_) = G.get_ports topo (G.Switch s) (G.Host h2) in

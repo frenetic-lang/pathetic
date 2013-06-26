@@ -1,8 +1,8 @@
 open Printf
-open OpenFlow0x04Parser
-open Platform0x04
+(* open OpenFlow0x04Parser *)
+open OpenFlow0x04_Platform
 open Unix
-open OpenFlowTypes
+open OpenFlow0x04_Core
 (* module Test = RegexTest *)
 module Test = RegexFTTest
 
@@ -33,7 +33,7 @@ let main () =
     (* Printexc.record_backtrace (); *)
     Lwt_main.run (Controller.start ())
   with exn -> 
-    Misc.Log.printf "[main] exception: %s\n%s\n%!" 
+    OpenFlow0x04_Misc.Log.printf "[main] exception: %s\n%s\n%!" 
       (Printexc.to_string exn) (Printexc.get_backtrace ());
     OpenFlowPlatform.shutdown ();
     exit 1

@@ -1,6 +1,6 @@
 open Pathetic.Regex
 open Pathetic.RegexUtils
-open OpenFlowTypes
+open OpenFlow0x04_Core
 open NetCoreFT
 
 module G = Graph.Graph
@@ -94,9 +94,9 @@ let build_k_tree n regex topo =
 
 let strip_tag = { unmodified with modifyDlVlan = Some None }
 
-let stamp_path_tag pathTag tag = 
+let stamp_path_tag (pathTag : Packet.dlVlan) tag = 
   (* If we set the VLAN, the controller will push a new tag on. Should probably fix that *)
-  { unmodified with modifyDlVlan = Some (Some pathTag); modifyDlVlanPcp = (Some tag) }
+  { unmodified with modifyDlVlan = Some pathTag; modifyDlVlanPcp = (Some tag) }
 
 
 let stamp_tag tag = 
@@ -178,9 +178,9 @@ let next_port_from_k_tree_root sw topo pathTag tree =
     To(strip_tag, p1)
   | (tag, KTree_t (sw', _)) -> 
     let p1,p2 = G.get_ports topo sw sw' in
-    To(stamp_path_tag pathTag tag, p1)
+    To(stamp_path_tag (Some pathTag) tag, p1)
 
-let policy_from_k_tree pr tree topo path_tag tag =  
+let policy_from_k_tree pr tree topo (path_tag : int) tag =  
   (* Printf.printf "[FaulTolerance.ml] policy_from_k_tree %s\n%!" (tagged_k_tree_to_string tree); *)
   match tree with
     | KRoot_t(G.Host h, KTree_t(G.Switch sw, children)) -> 
@@ -207,6 +207,6 @@ let rec compile_ft_regex pol vid topo =
 let rec compile_ft_to_nc regpol topo =
   let genSym = GenSym.create() in
   let pols = normalize regpol in
-  List.fold_left (fun acc pol -> let vid = GenSym.next_val genSym in 
+  List.fold_left (fun acc pol -> let vid = (GenSym.next_val genSym) in 
 				 Par(compile_ft_regex pol vid topo, acc))
     trivial_pol pols

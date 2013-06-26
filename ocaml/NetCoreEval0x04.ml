@@ -1,11 +1,11 @@
-open NetworkPacket
-open OpenFlowTypes
+open Packet
+open OpenFlow0x04_Core
 
 type id = int
 
 type modification = { modifyDlSrc : dlAddr option;
                       modifyDlDst : dlAddr option;
-                      modifyDlVlan : dlVlan option option;
+                      modifyDlVlan : dlVlan option;
                       modifyDlVlanPcp : dlVlanPcp option;
                       modifyNwSrc : nwAddr option;
                       modifyNwDst : nwAddr option;
@@ -91,12 +91,17 @@ let wildcard_to_string str wc = match wc with
   | Wildcard.WildcardAll -> ""
   | Wildcard.WildcardExact x -> Printf.sprintf "%s %d" str x
 
+let wildcard_option_to_string str wc = match wc with
+  | Wildcard.WildcardAll -> ""
+  | Wildcard.WildcardExact (Some x) -> Printf.sprintf "%s %d" str x
+  | Wildcard.WildcardExact None -> Printf.sprintf "%s None" str
+
 let pat_to_string pat = 
   Printf.sprintf "{ %s; %s; %s; %s; %s; %s }" 
     (wildcard64_to_string "ptrnDlSrc = " pat.PatternImplDef.ptrnDlSrc) 
     (wildcard64_to_string "ptrnDlDst = " pat.PatternImplDef.ptrnDlDst) 
     (wildcard_to_string "ptrnDlType = " pat.PatternImplDef.ptrnDlType) 
-    (wildcard_to_string "ptrnDlVlan = " pat.PatternImplDef.ptrnDlVlan) 
+    (wildcard_option_to_string "ptrnDlVlan = " pat.PatternImplDef.ptrnDlVlan) 
     (wildcard_to_string "ptrnDlVlanPcp = " pat.PatternImplDef.ptrnDlVlanPcp) 
     (wildcard_to_string "ptrnInPort = " pat.PatternImplDef.ptrnInPort)
 
@@ -168,7 +173,7 @@ let modify_pkt mods pk =
   in
   maybe_modify dlSrc setDlSrc
     (maybe_modify dlDst setDlDst
-      (maybe_modify (withVlanNone dlVlan0) setDlVlan
+      (maybe_modify dlVlan0 setDlVlan
         (maybe_modify dlVlanPcp0 setDlVlanPcp
           (maybe_modify nwSrc setNwSrc
             (maybe_modify nwDst setNwDst
@@ -206,7 +211,7 @@ let eval_action inp = function
   OutAct (sw, [Forward (mods, pp)], pk,
 	  (match buf with
 	    | Some b -> Datatypes.Coq_inl b
-	    | None -> Datatypes.Coq_inr (Packet_Parser.serialize_packet pk)))
+	    | None -> Datatypes.Coq_inr (Packet.marshal pk)))
 | ActGetPkt x ->
   let InPkt (sw, pt, pk, buf) = inp in OutGetPkt (x, sw, pt, pk)
 

@@ -1,9 +1,9 @@
 open Wildcard
 open Pattern
-open NetworkPacket
+open Packet
 open ControllerInterface0x04
-open OpenFlowTypes
-open Platform0x04
+open OpenFlow0x04_Core
+open OpenFlow0x04_Platform
 open NetCoreEval0x04
 open Printf
 
@@ -194,8 +194,8 @@ let rec predicate_to_string pred = match pred with
   | Switch sw -> Printf.sprintf "(Switch %Ld)" sw
   | InPort pt -> Printf.sprintf "(InPort %ld)" pt
   | DlType typ -> Printf.sprintf "(DlType %d)" typ
-  | DlSrc add -> Printf.sprintf "(DlSrc %s)" (Misc.string_of_mac add)
-  | DlDst add -> Printf.sprintf "(DlDst %s)" (Misc.string_of_mac add)
+  | DlSrc add -> Printf.sprintf "(DlSrc %s)" (OpenFlow0x04_Misc.string_of_mac add)
+  | DlDst add -> Printf.sprintf "(DlDst %s)" (OpenFlow0x04_Misc.string_of_mac add)
   | DlVlan (Some vlan) -> Printf.sprintf "(DlVlan %d)" vlan
   | DlVlan None -> Printf.sprintf "(DlVlan NONE)"
   | DlVlanPcp vlanPcp -> Printf.sprintf "(DlVlanPcp %d)" vlanPcp
@@ -232,7 +232,7 @@ let desugar_act act = match act with
 module PID = PatternImplDef
 
 let dlVlanNone = { PID.ptrnDlSrc = WildcardAll; PID.ptrnDlDst = WildcardAll;
-      PID.ptrnDlType = WildcardAll; PID.ptrnDlVlan = WildcardExact 0;
+      PID.ptrnDlType = WildcardAll; PID.ptrnDlVlan = WildcardExact (Some 0);
       PID.ptrnDlVlanPcp = WildcardAll; PID.ptrnNwSrc =
       WildcardAll; PID.ptrnNwDst = WildcardAll; PID.ptrnNwProto =
       WildcardAll; PID.ptrnNwTos = WildcardAll; PID.ptrnTpSrc =
@@ -256,7 +256,7 @@ let rec desugar_pred pred = match pred with
   | DlDst n -> NetCoreEval0x04.PrHdr (Pattern.dlDst n)
   (* | DlVlan _  -> NetCoreEval0x04.PrAll *)
   (* | DlVlanPcp _ -> NetCoreEval0x04.PrAll *)
-  | DlVlan (Some vlan) -> NetCoreEval0x04.PrHdr (Pattern.dlVlan vlan)
+  | DlVlan (Some vlan) -> NetCoreEval0x04.PrHdr (Pattern.dlVlan (Some vlan))
   | DlVlan None -> NetCoreEval0x04.PrHdr dlVlanNone
   | DlVlanPcp vlanPcp -> NetCoreEval0x04.PrHdr (Pattern.dlVlanPcp vlanPcp)
   | SrcIP n -> NetCoreEval0x04.PrHdr (Pattern.ipSrc n)

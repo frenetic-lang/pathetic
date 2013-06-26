@@ -2,10 +2,10 @@ module type GRAPH =
 sig
   type node =
       Host of int
-    | Switch of OpenFlowTypes.switchId
+    | Switch of OpenFlow0x04_Core.switchId
 
   type a = node
-  type b = OpenFlowTypes.portId
+  type b = OpenFlow0x04_Core.portId
   type graph
   val create : unit -> graph
   val add_node : graph -> a -> unit

@@ -1,7 +1,6 @@
 open Datatypes
-open NetworkPacket
+open Packet
 open OpenFlow0x01Types
-open WordInterface
 
 type id =
   int
@@ -9,7 +8,7 @@ type id =
 
 type modification = { modifyDlSrc : dlAddr option;
                       modifyDlDst : dlAddr option;
-                      modifyDlVlan : dlVlan option option;
+                      modifyDlVlan : dlVlan option;
                       modifyDlVlanPcp : dlVlanPcp option;
                       modifyNwSrc : nwAddr option;
                       modifyNwDst : nwAddr option;
@@ -21,7 +20,7 @@ val modifyDlSrc : modification -> dlAddr option
 
 val modifyDlDst : modification -> dlAddr option
 
-val modifyDlVlan : modification -> dlVlan option option
+val modifyDlVlan : modification -> dlVlan option
 
 val modifyDlVlanPcp : modification -> dlVlanPcp option
 
@@ -93,7 +92,7 @@ val serialize_pkt : packet -> bytes
 val maybe_modify :
   'a1 option -> (packet -> 'a1 -> packet) -> packet -> packet
 
-val withVlanNone : dlVlan option option -> dlVlan option
+(* val withVlanNone : dlVlan option option -> dlVlan *)
 
 val modify_pkt : modification -> packet -> packet
 

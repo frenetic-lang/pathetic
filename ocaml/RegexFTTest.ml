@@ -1,6 +1,5 @@
-open OpenFlowTypes
-open WordInterface
-open Platform0x04
+open OpenFlow0x04_Core
+open OpenFlow0x04_Platform
 open FaultTolerance
 open NetCoreFT
 open Pathetic.Regex

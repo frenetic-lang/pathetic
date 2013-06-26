@@ -1,4 +1,5 @@
-open NetworkPacket
+open Packet
+
 (* open Peano *)
 
 type 'a coq_Classifier = (Pattern.pattern * 'a) list

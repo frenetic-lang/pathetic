@@ -1,7 +1,7 @@
 (** The NetCore policy language *)
-open NetworkPacket
-open OpenFlowTypes
-open Platform0x04
+open Packet
+open OpenFlow0x04_Core
+open OpenFlow0x04_Platform
 
 type get_packet_handler = switchId -> portId -> packet -> unit
 
@@ -30,7 +30,7 @@ type predicate =
 type modification = NetCoreEval0x04.modification
 val modifyDlSrc : modification -> dlAddr option
 val modifyDlDst : modification -> dlAddr option
-val modifyDlVlan : modification -> dlVlan option option
+val modifyDlVlan : modification -> dlVlan option
 val modifyDlVlanPcp : modification -> dlVlanPcp option
 val modifyNwSrc : modification -> nwAddr option
 val modifyNwDst : modification -> nwAddr option

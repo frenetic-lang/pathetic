@@ -1,4 +1,4 @@
-open OpenFlowTypes
+open OpenFlow0x04_Core
 
 type event =
 | SwitchConnected of switchId

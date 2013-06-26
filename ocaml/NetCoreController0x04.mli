@@ -1,16 +1,15 @@
 open Classifier
-open NetworkPacket
+open Packet
 open ControllerInterface0x04
 open Datatypes
-open OpenFlowTypes
+open OpenFlow0x04_Core
 open NetCoreCompiler0x04
 open NetCoreEval0x04
-open WordInterface
 
 val prio_rec :
-  Word16.t -> 'a1 coq_Classifier -> ((Word16.t*Pattern.pattern)*'a1) list
+  int16 -> 'a1 coq_Classifier -> ((int16*Pattern.pattern)*'a1) list
 
-val prioritize : 'a1 coq_Classifier -> ((Word16.t*Pattern.pattern)*'a1) list
+val prioritize : 'a1 coq_Classifier -> ((int16*Pattern.pattern)*'a1) list
 
 val packetIn_to_in : switchId -> packetIn -> input
 
@@ -21,7 +20,7 @@ val modification_to_openflow0x01 : modification -> actionSequence
 
 val translate_action : portId option -> act -> actionSequence
 
-val to_flow_mod : Word16.t -> Pattern.pattern -> act list -> tableId -> flowMod
+val to_flow_mod : int16 -> Pattern.pattern -> act list -> tableId -> flowMod
 
 val flow_mods_of_classifier : act list coq_Classifier -> tableId -> flowMod list
 

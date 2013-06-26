@@ -1,9 +1,9 @@
 open Datatypes
-open NetworkPacket
+open Packet
 
 type 'a coq_Classifier = (Pattern.pattern * 'a) list
 
-val scan : 'a1 -> 'a1 coq_Classifier -> portId -> packet -> 'a1
+val scan : 'a1 -> 'a1 coq_Classifier -> OpenFlow0x01Types.portId -> packet -> 'a1
 
 val inter_entry :
   ('a1 -> 'a1 -> 'a2) -> 'a1 coq_Classifier -> (Pattern.pattern * 'a1) ->

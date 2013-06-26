@@ -1,7 +1,7 @@
 module H = Hashtbl
 module Q = Queue
-module M = OpenFlowTypes
-module P = OpenFlowTypes
+module M = OpenFlow0x04_Core
+module P = OpenFlow0x04_Core
 
 module type GRAPH =
 sig

@@ -1,12 +1,11 @@
 open Datatypes
-open WordInterface
-open NetworkPacket
-open OpenFlowTypes
+open Packet
+open OpenFlow0x04_Core
 
 type id = int
 type modification = { modifyDlSrc : dlAddr option;
                       modifyDlDst : dlAddr option;
-                      modifyDlVlan : dlVlan option option;
+                      modifyDlVlan : dlVlan option;
                       modifyDlVlanPcp : dlVlanPcp option;
                       modifyNwSrc : nwAddr option;
                       modifyNwDst : nwAddr option;
@@ -16,7 +15,7 @@ type modification = { modifyDlSrc : dlAddr option;
 
 val modifyDlSrc : modification -> dlAddr option
 val modifyDlDst : modification -> dlAddr option
-val modifyDlVlan : modification -> dlVlan option option
+val modifyDlVlan : modification -> dlVlan option
 val modifyDlVlanPcp : modification -> dlVlanPcp option
 val modifyNwSrc : modification -> nwAddr option
 val modifyNwDst : modification -> nwAddr option

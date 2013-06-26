@@ -1,6 +1,5 @@
-open NetworkPacket
+open Packet
 open OpenFlow0x01Types
-open WordInterface
 
 (** val filter_map_body :
     ('a1 -> 'a2 option) -> 'a1 -> 'a2 list -> 'a2 list **)
@@ -21,7 +20,7 @@ type id =
 
 type modification = { modifyDlSrc : dlAddr option;
                       modifyDlDst : dlAddr option;
-                      modifyDlVlan : dlVlan option option;
+                      modifyDlVlan : dlVlan option;
                       modifyDlVlanPcp : dlVlanPcp option;
                       modifyNwSrc : nwAddr option;
                       modifyNwDst : nwAddr option;
@@ -107,9 +106,9 @@ let mod_mask mod0 =
   in
   List.fold_right Pattern.Pattern.inter
     ((if is_some dlSrc0
-      then Pattern.Pattern.dlSrc Word48.zero
+      then Pattern.Pattern.dlSrc 0L
       else Pattern.Pattern.all) :: ([if is_some dlDst0
-                                     then Pattern.Pattern.dlDst Word48.zero
+                                     then Pattern.Pattern.dlDst 0L
                                      else Pattern.Pattern.all]))
     Pattern.Pattern.all
 
@@ -198,7 +197,7 @@ let rec match_pred pr sw pt pk =
 
 (** val serialize_pkt : packet -> bytes **)
 
-let serialize_pkt = Packet_Parser.serialize_packet
+let serialize_pkt = Packet.marshal
 
 (** val maybe_modify :
     'a1 option -> (packet -> 'a1 -> packet) -> packet -> packet **)
@@ -226,7 +225,7 @@ let modify_pkt mods pk =
   in
   maybe_modify dlSrc0 setDlSrc
     (maybe_modify dlDst0 setDlDst
-      (maybe_modify (withVlanNone dlVlan0) setDlVlan
+      (maybe_modify dlVlan0 setDlVlan
         (maybe_modify dlVlanPcp0 setDlVlanPcp
           (maybe_modify nwSrc setNwSrc
             (maybe_modify nwDst setNwDst

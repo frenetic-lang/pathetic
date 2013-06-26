@@ -1,7 +1,6 @@
 open Datatypes
-open NetworkPacket
+open Packet
 open OpenFlow0x01Types
-open WordInterface
 
 type pattern = { ptrnDlSrc : dlAddr Wildcard.coq_Wildcard;
                  ptrnDlDst : dlAddr Wildcard.coq_Wildcard;
@@ -58,8 +57,6 @@ val ptrnTpDst : pattern -> tpPort Wildcard.coq_Wildcard
 
 val ptrnInPort : pattern -> portId Wildcard.coq_Wildcard
 
-val eq_dec : pattern -> pattern -> bool
-
 val coq_Wildcard_of_option : 'a1 -> 'a1 option -> 'a1 Wildcard.coq_Wildcard
 
 val all : pattern
@@ -72,9 +69,9 @@ val to_match : pattern -> of_match
 
 val inter : pattern -> pattern -> pattern
 
-val exact_pattern : packet -> Word16.t -> pattern
+val exact_pattern : packet -> int16 -> pattern
 
-val match_packet : Word16.t -> packet -> pattern -> bool
+val match_packet : int16 -> packet -> pattern -> bool
 
 val is_exact : pattern -> bool
 

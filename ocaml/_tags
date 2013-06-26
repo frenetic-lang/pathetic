@@ -10,4 +10,4 @@ true : use_menhir
 <*.d.byte> : package(cstruct), package(lwt), package(lwt.unix)
 <*.byte> : package(cstruct), package(lwt), package(lwt.unix)
 <*.native> : package(cstruct), package(lwt), package(lwt.unix)
-<Main_OpenFlow0x04.*> : package(str)
+<Main_OpenFlow0x04.*> : package(str), package(OpenFlowLib)

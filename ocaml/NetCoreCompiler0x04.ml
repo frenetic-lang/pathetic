@@ -56,7 +56,7 @@ let rec compile_pol opt popt p sw =
        (map (second (apply_act [Group gid]))
           (List.append (compile_pred popt pr sw)
              [(Pattern.Pattern.all,false)])),
-     [(gid, OpenFlowTypes.FF, List.map (fun x -> [x]) act0)])
+     [(gid, OpenFlow0x04_Core.FF, List.map (fun x -> [x]) act0)])
 
 
 (** val strip_empty_rules : 'a1 coq_Classifier -> 'a1 coq_Classifier **)
@@ -95,7 +95,7 @@ let rec fix_inports groups port gt =
   List.map (fun (gid, typ, bckts) ->
     if List.mem gid groups then
       (gid, typ, List.map (fun bckt -> List.map (fun act -> match act with
-	| Forward(md, OpenFlowTypes.PhysicalPort pt) -> if pt = (Int32.of_int port) then Forward(md, OpenFlowTypes.InPort) else act
+	| Forward(md, OpenFlow0x04_Core.PhysicalPort pt) -> if pt = (Int32.of_int port) then Forward(md, OpenFlow0x04_Core.InPort) else act
 	| _ -> act) bckt) bckts)
     else
       (gid, typ, bckts)) gt

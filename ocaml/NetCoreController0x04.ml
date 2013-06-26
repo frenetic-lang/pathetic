@@ -3,9 +3,8 @@ open ControllerInterface0x04
 open NetCoreEval
 open NetCoreEval0x04
 open NetCoreCompiler0x04
-open NetworkPacket
-open OpenFlowTypes
-open WordInterface
+open Packet
+open OpenFlow0x04_Core
 
 (** val prio_rec :
     Word16.t -> 'a1 coq_Classifier -> ((Word16.t*Pattern.pattern)*'a1) list **)
@@ -15,13 +14,13 @@ let nc_compiler = NetCoreCompiler0x04.compile_opt
 let rec prio_rec prio = function
 | [] -> []
 | p::rest ->
-  let pat,act0 = p in ((prio,pat),act0)::(prio_rec (Word16.pred prio) rest)
+  let pat,act0 = p in ((prio,pat),act0)::(prio_rec (prio - 1) rest)
 
 (** val prioritize :
     'a1 coq_Classifier -> ((Word16.t*Pattern.pattern)*'a1) list **)
 
 let prioritize lst =
-  prio_rec Word16.max_value lst
+  prio_rec max_int lst
 
 (** val packetIn_to_in : switchId -> packetIn -> input **)
 
@@ -77,7 +76,7 @@ let translate_action in_port = function
          | None -> Output (PhysicalPort pp))::[])
    | _ -> List.append (modification_to_openflow0x01 mods) ((Output p)::[]))
 | NetCoreEval0x04.Group gid -> [Group gid]
-| ActGetPkt x -> (Output (Controller Word16.max_value))::[]
+| ActGetPkt x -> (Output (Controller max_int))::[]
 
 (** val to_flow_mod : priority -> Pattern.pattern -> act list -> flowMod **)
 
@@ -105,9 +104,10 @@ let pattern_to_oxm_match pat =
    @ (match dlTyp with Wildcard.WildcardExact t -> [OxmEthType t] | _ -> [])
    @ (match dlDst with Wildcard.WildcardExact a -> [ OxmEthDst (val_to_mask a)] | _ -> [])
    @ (match dlVlan with
-     | Wildcard.WildcardExact a -> [ OxmVlanVId (val_to_mask a)]
+     | Wildcard.WildcardExact (Some a) -> [ OxmVlanVId (val_to_mask a)]
      (* Must be empty list. Trying to get cute and use a wildcard mask confuses the switch *)
      | Wildcard.WildcardAll -> []
+     | Wildcard.WildcardExact None -> [OxmVlanVId {m_value=0; m_mask=None}]
      | Wildcard.WildcardNone -> [OxmVlanVId {m_value=0; m_mask=None}])
    (* VlanPCP requires exact non-VLAN_NONE match on Vlan *)
    @ (match (dlVlanPcp, dlVlan) with (Wildcard.WildcardExact a, Wildcard.WildcardExact _) -> [ OxmVlanPcp a] | _ -> [])
@@ -165,7 +165,7 @@ let group_mods_of_classifier lst =
 
 (** val delete_all_flows : flowMod **)
 let delete_all_groups = 
-  DeleteGroup (All,OpenFlow0x04Parser.ofpg_all)
+  DeleteGroup (All,OpenFlow0x04.ofpg_all)
 
 let delete_all_flows tableId =
   { mfCommand = DeleteFlow; mfOfp_match = []; mfPriority = 0;
@@ -179,7 +179,7 @@ let delete_all_flows tableId =
 	     fmf_no_pkt_counts = false;
 	     fmf_no_byt_counts = false }}
 
-type group_htbl = (OpenFlowTypes.switchId, (int32 * OpenFlowTypes.groupType * NetCoreEval0x04.act list list) list) Hashtbl.t
+type group_htbl = (OpenFlow0x04_Core.switchId, (int32 * OpenFlow0x04_Core.groupType * NetCoreEval0x04.act list list) list) Hashtbl.t
 
 module type NETCORE_MONAD = 
  sig 
@@ -242,9 +242,9 @@ module Make =
     Printf.printf "[NetCoreController0x04.ml] installing gt of size %d %s\n%!" (List.length gm_cls) (groups_to_string gm_cls);
 
     sequence
-      ((List.map (fun fm -> Monad.send swId Word32.zero (GroupModMsg fm))
+      ((List.map (fun fm -> Monad.send swId Int32.zero (GroupModMsg fm))
 	  (delete_all_groups :: (group_mods_of_classifier gm_cls))) @
-      (List.map (fun fm -> Monad.send swId Word32.zero (FlowModMsg fm))
+      (List.map (fun fm -> Monad.send swId Int32.zero (FlowModMsg fm))
         (delete_all_flows tblId::(flow_mods_of_classifier fm_cls tblId))))
   
   (** val set_policy : pol -> unit Monad.m **)
@@ -264,7 +264,7 @@ module Make =
     Monad.bind Monad.get (fun st ->
       let switch_list =
         List.filter (fun swId' ->
-          if Word64.eq_dec swId swId' then false else true) st.Monad.switches
+          if swId = swId' then false else true) st.Monad.switches
       in
       Monad.bind (Monad.put { st with Monad.switches = switch_list })
         (fun x -> Monad.ret ()))
@@ -284,7 +284,7 @@ module Make =
   | OutAct (swId, [], pkt, bufOrBytes) -> Monad.ret ()
   | OutAct (swId, acts, pkt, bufOrBytes) ->
     let (buf, pkt) = (match bufOrBytes with Datatypes.Coq_inl buf -> (Some buf, None) | _ -> (None, Some pkt)) in
-    Monad.send swId Word32.zero (PacketOutMsg { po_buffer_id =
+    Monad.send swId Int32.zero (PacketOutMsg { po_buffer_id =
       buf; po_in_port = Controller 0; po_pkt = pkt; po_actions = List.concat (List.map (translate_action None) acts) })
   | OutGetPkt (x, switchId0, portId0, packet0) ->
     Monad.handle_get_packet x switchId0 portId0 packet0
