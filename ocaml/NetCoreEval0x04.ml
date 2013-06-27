@@ -86,15 +86,18 @@ type output =
 let wildcard64_to_string str wc = match wc with
   | Wildcard.WildcardAll -> ""
   | Wildcard.WildcardExact x -> Printf.sprintf "%s %Ld" str x
+  | Wildcard.WildcardNone -> Printf.sprintf "%s NONE" str
 
 let wildcard_to_string str wc = match wc with
   | Wildcard.WildcardAll -> ""
   | Wildcard.WildcardExact x -> Printf.sprintf "%s %d" str x
+  | Wildcard.WildcardNone -> Printf.sprintf "%s NONE" str
 
 let wildcard_option_to_string str wc = match wc with
   | Wildcard.WildcardAll -> ""
   | Wildcard.WildcardExact (Some x) -> Printf.sprintf "%s %d" str x
   | Wildcard.WildcardExact None -> Printf.sprintf "%s None" str
+  | Wildcard.WildcardNone -> Printf.sprintf "%s None" str
 
 let pat_to_string pat = 
   Printf.sprintf "{ %s; %s; %s; %s; %s; %s }" 
@@ -214,6 +217,7 @@ let eval_action inp = function
 	    | None -> Datatypes.Coq_inr (Packet.marshal pk)))
 | ActGetPkt x ->
   let InPkt (sw, pt, pk, buf) = inp in OutGetPkt (x, sw, pt, pk)
+| Group _ -> failwith "NYI: Can't evaluate Group action"
 
 (* [OutAct (sw, (strip_controller actions), pk, match buf with *)
 (*       | Some b -> Coq_inl b *)

@@ -28,7 +28,7 @@ let rec k_tree_to_string tree = match tree with
     Printf.sprintf "KLeaf (%s)" (G.node_to_string n)
   | KTree(n, children) -> 
     Printf.sprintf "KTree(%s, [ %s ])" (G.node_to_string n) (print_list k_tree_to_string children)
-  | KRoot(root, child) = Printf.sprintf "KRoot (%s, %s)" (G.node_to_string root) (G.node_to_string child)
+  | KRoot(root, child) -> Printf.sprintf "KRoot (%s, %s)" (G.node_to_string root) (k_tree_to_string child)
 
 let shortest_path_fail_set re sw topo fail_set =
   (* Printf.printf "[FaultTolerance.ml] shortest_path_fail_set %s %s %s\n" (regex_to_string re) (G.node_to_string sw) *)
@@ -88,7 +88,7 @@ let build_k_tree n regex topo =
       (match build_k_tree_from_path path regex n 0 [] topo with
 	| None -> raise (NoTree "failed to build k-tree")
 	| Some tree -> tree)
-    | _ -> failwith (Printf.sprintf "Path %s returned for %s doesn't begin with a host" (print_list G.node_to_string path) (regex_to_string re))
+    | _ -> failwith (Printf.sprintf "Path %s returned for %s doesn't begin with a host" (print_list G.node_to_string path) (regex_to_string regex))
 
 
 (** Compiling k-trees into NetCore policies **)
