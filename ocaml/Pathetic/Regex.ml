@@ -92,6 +92,7 @@ let rec nu re =
       | Comp a -> match nu a with
 	  | Empty -> EmptySet
 	  | EmptySet -> Empty
+	  | _ -> failwith "nu returned other than Empty/EmptySet\n"
   in
   (* Printf.printf "nu %s\n" (regex_to_string re); *)
   (* Printf.printf "returned %s\n" (regex_to_string foo); *)
@@ -103,6 +104,7 @@ let rec is_empty re = match re with
   | Const _ -> false
   | Sequence(a,b) -> is_empty(a) or is_empty(b)
   | Union(a,b) -> is_empty(a) & is_empty(b)
+  | Intersection(a,b) -> is_empty (Comp (Union (Comp a, Comp b)))
   | Star -> false
   | Comp a -> not (is_empty a)
 

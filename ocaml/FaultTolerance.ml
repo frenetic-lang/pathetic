@@ -28,15 +28,14 @@ let rec k_tree_to_string tree = match tree with
     Printf.sprintf "KLeaf (%s)" (G.node_to_string n)
   | KTree(n, children) -> 
     Printf.sprintf "KTree(%s, [ %s ])" (G.node_to_string n) (print_list k_tree_to_string children)
+  | KRoot(root, child) = Printf.sprintf "KRoot (%s, %s)" (G.node_to_string root) (G.node_to_string child)
 
 let shortest_path_fail_set re sw topo fail_set =
   (* Printf.printf "[FaultTolerance.ml] shortest_path_fail_set %s %s %s\n" (regex_to_string re) (G.node_to_string sw) *)
-    (print_list (print_tuple1 G.node_to_string) fail_set);
+  (*   (print_list (print_tuple1 G.node_to_string) fail_set); *)
   let topo' = G.copy topo in
   G.del_links topo' fail_set;
   List.tl (shortest_path_re re sw topo')
-
-let rec next_ordering lst = failwith "NYI: next_ordering"; lst
 
 (* Initial version: no backtracking *)
 (* Build an (n - k) fault tolerant tree along 'path', avoiding links in 'fail_set' *)
@@ -56,6 +55,7 @@ let rec build_k_tree_from_path path regex n k fail_set topo =
 	   up to our parent if we fail *)
 	| None -> None
 	| Some children -> Some (KTree(sw, children)))
+    | [] -> failwith "Can not build ktree from empty path"
 and
     (* Build (n - k) backup paths at 'sw' according to 'regex',
        avoiding links in 'fail_set'. Order regex restricts the nodes
@@ -88,6 +88,7 @@ let build_k_tree n regex topo =
       (match build_k_tree_from_path path regex n 0 [] topo with
 	| None -> raise (NoTree "failed to build k-tree")
 	| Some tree -> tree)
+    | _ -> failwith (Printf.sprintf "Path %s returned for %s doesn't begin with a host" (print_list G.node_to_string path) (regex_to_string re))
 
 
 (** Compiling k-trees into NetCore policies **)
@@ -133,6 +134,7 @@ let rec tag_k_tree tree tag gensym = match tree with
 						 (new_tag, tag_k_tree child new_tag gensym)) rest in
     KTree_t (sw, first_child :: backup_children)
   | KRoot (h, tree) -> KRoot_t(h, tag_k_tree tree tag gensym)
+  | KTree(sw, []) -> failwith (Printf.sprintf "tag_k_tree: ktree at node %s contained no children" (G.node_to_string sw))
 
 let next_port_from_k_tree sw topo pathTag tree = 
   (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
@@ -143,6 +145,8 @@ let next_port_from_k_tree sw topo pathTag tree =
   | (tag, KTree_t (sw', _)) -> 
     let p1,p2 = G.get_ports topo sw sw' in
     To(stamp_tag tag, p1)
+  | (tag, KRoot_t (h,sw)) ->
+    failwith "next_port_from_k_tree: off-by-one error. Should not be called on KRoot_t node"
 
 let next_hop_from_k_tree sw topo tree = 
   (* Printf.printf "[FaulTolerance.ml] next_hop_from_k_tree %s\n%!" (k_tree_to_string tree); *)
@@ -153,6 +157,8 @@ let next_hop_from_k_tree sw topo tree =
   | (_, KTree_t (sw', _)) -> 
     let p1,p2 = G.get_ports topo sw sw' in
     (sw', p2, tree)
+  | (tag, KRoot_t (h,sw)) ->
+    failwith "next_hop_from_k_tree: off-by-one error. Should not be called on KRoot_t node"
 
 (* Converts a k fault tolerant tree into a NetCore policy *)
 let rec policy_from_k_tree' inport tree topo path_tag tag = 
