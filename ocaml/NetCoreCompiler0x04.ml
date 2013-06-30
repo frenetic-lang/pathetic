@@ -113,7 +113,8 @@ let rec replace_inport ft gt = match ft with
 	let groups = (List.fold_left (fun acc act -> match act with
 	  | Group gid -> gid :: acc
 	  | _ -> acc) [] acts) in
-	replace_inport ft (fix_inports groups x gt))
+	replace_inport ft (fix_inports groups x gt)
+      | Wildcard.WildcardNone -> failwith "replace_inport: WildcardNone makes no sense for inport predicate")
   
 let compile_opt pol swid =
   (* compile_pol (fun x -> strip_empty_rules (elim_shadowed x)) (fun x -> strip_empty_rules (elim_shadowed x)) pol swid *)

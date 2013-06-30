@@ -13,8 +13,6 @@ Prerequisites
 
 - OPAM <http://opam.ocamlpro.com>
 
-- Frenetic <http://github.com/frenetic-lang/frenetic>
-
 - The following OCaml libraries:
 
   - findlib
@@ -22,11 +20,12 @@ Prerequisites
   - cstruct 
   - oUnit
   - menhir
+  - frenetic
 
   These are available on OPAM:
 
   ```
-  $ opam install ocamlfind cstruct lwt ounit menhir
+  $ opam install ocamlfind cstruct lwt ounit menhir frenetic
   ```
 
 Building

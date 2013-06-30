@@ -20,7 +20,7 @@ let rec prio_rec prio = function
     'a1 coq_Classifier -> ((Word16.t*Pattern.pattern)*'a1) list **)
 
 let prioritize lst =
-  prio_rec max_int lst
+  prio_rec (max_int - 1) lst
 
 (** val packetIn_to_in : switchId -> packetIn -> input **)
 
