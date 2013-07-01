@@ -1,6 +1,7 @@
-open OpenFlow0x01Types
-open NetCoreFT
+(* open OpenFlow0x01Types *)
+open NetCore_Types
 module G = Graph.Graph
+open NetCore_Pretty
 
 (* type graph = (switchId * switchId * int) list *)
 
@@ -16,7 +17,7 @@ type regex =
   | EmptySet
 
 type regex_policy = 
-  | RegPol of predicate * regex * int
+  | RegPol of pred * regex * int
   | RegUnion of regex_policy * regex_policy
   | RegInter of regex_policy * regex_policy
 
@@ -38,7 +39,7 @@ let rec regex_to_string reg = match reg with
   | Intersection(reg1, reg2) -> Printf.sprintf "( %s <&&> %s )" (regex_to_string reg1) (regex_to_string reg2)
 
 let rec regexPol_to_string regPol = match regPol with
-  | RegPol(pr, reg, k) -> Printf.sprintf "RegPol(%s, %s, %d)" (predicate_to_string pr) (regex_to_string reg) k
+  | RegPol(pr, reg, k) -> Printf.sprintf "RegPol(%s, %s, %d)" (string_of_pred pr) (regex_to_string reg) k
   | RegUnion(reg_pol1, reg_pol2) -> Printf.sprintf "(%s <+> %s)" (regexPol_to_string reg_pol1) (regexPol_to_string reg_pol2)
   | RegInter(reg_pol1, reg_pol2) -> Printf.sprintf "(%s <*> %s)" (regexPol_to_string reg_pol1) (regexPol_to_string reg_pol2)
 

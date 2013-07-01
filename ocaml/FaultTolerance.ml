@@ -1,15 +1,18 @@
 open Pathetic.Regex
 open Pathetic.RegexUtils
 open OpenFlow0x04_Core
-open NetCoreFT
+open NetCore_Types
+(* open NetCoreFT *)
 
 module G = Graph.Graph
 
-open NetCoreEval0x04
+(* open NetCoreEval0x04 *)
 
 (** Constructing k-resilient trees (k-trees) from regular expression paths **)
 
-let trivial_pol = Pol(NoPackets, [])
+let trivial_pol = Action []
+
+let lpar (a,b) = Seq (Filter a, ActionChoice b)
 
 (* Tree w/ ordered children. Leafs are hosts, internal nodes are switches *)
 type k_tree = 
@@ -93,19 +96,19 @@ let build_k_tree n regex topo =
 
 (** Compiling k-trees into NetCore policies **)
 
-let strip_tag = { unmodified with modifyDlVlan = Some None }
+let strip_tag ver = { id with outDlVlan = Some (ver, None) }
 
 let stamp_path_tag (pathTag : Packet.dlVlan) tag = 
   (* If we set the VLAN, the controller will push a new tag on. Should probably fix that *)
-  { unmodified with modifyDlVlan = Some pathTag; modifyDlVlanPcp = (Some tag) }
+  { id with outDlVlan = Some (None, pathTag); outDlVlanPcp = (Some (0, tag)) }
 
 
 let stamp_tag tag = 
   (* If we set the VLAN, the controller will push a new tag on. Should probably fix that *)
-  { unmodified with modifyDlVlanPcp = (Some tag) }
+  { id with outDlVlanPcp = Some (0, tag) }
 
 let match_tag pathTag tag = 
-  And( DlVlan (Some pathTag), DlVlanPcp tag )
+  { all with ptrnDlVlan = WildcardExact pathTag; ptrnDlVlanPcp = WildcardExact tag }
 
 module GenSym =
 struct
@@ -141,10 +144,10 @@ let next_port_from_k_tree sw topo pathTag tree =
   match tree with
   | (tag, KLeaf_t host) -> 
     let (_,p1) = G.get_ports topo host sw in
-    To(strip_tag, p1)
+    [ SwitchAction {(strip_tag pathTag) with outPort = Physical (Int32.to_int p1) } ]
   | (tag, KTree_t (sw', _)) -> 
     let p1,p2 = G.get_ports topo sw sw' in
-    To(stamp_tag tag, p1)
+    [ SwitchAction {(stamp_tag tag) with outPort = Physical (Int32.to_int p1) } ]
   | (tag, KRoot_t (h,sw)) ->
     failwith "next_port_from_k_tree: off-by-one error. Should not be called on KRoot_t node"
 
@@ -169,22 +172,22 @@ let rec policy_from_k_tree' inport tree topo path_tag tag =
     | KTree_t(sw', children) -> 
       let G.Switch sw = sw' in
       let children_actions = List.map (next_port_from_k_tree sw' topo path_tag) children in
-      let backup = LPar(And( Switch sw, And( InPort inport, match_tag path_tag tag )), 
+      let backup = lpar(And( OnSwitch sw, Hdr {(match_tag path_tag tag) with ptrnInPort = WildcardExact inport }), 
 			children_actions) in
       let next_hops = List.map (next_hop_from_k_tree sw' topo) children in
       let children_pols = List.fold_left 
 	(fun a (sw'', inport,tree) -> 
-	  Par(a, policy_from_k_tree' inport (snd tree) topo path_tag (fst tree))) trivial_pol next_hops in
-      Par(backup, children_pols)
+	  Union(a, policy_from_k_tree' (Physical (Int32.to_int inport)) (snd tree) topo path_tag (fst tree))) trivial_pol next_hops in
+      Union(backup, children_pols)
 
 let next_port_from_k_tree_root sw topo pathTag tree = 
   match tree with
   | (tag, KLeaf_t host) -> 
     let (_,p1) = G.get_ports topo host sw in
-    To(strip_tag, p1)
+    [ SwitchAction {(strip_tag pathTag) with outPort = Physical (Int32.to_int p1) } ]
   | (tag, KTree_t (sw', _)) -> 
     let p1,p2 = G.get_ports topo sw sw' in
-    To(stamp_path_tag (Some pathTag) tag, p1)
+    [ SwitchAction {(stamp_path_tag pathTag tag) with outPort = Physical (Int32.to_int p1) } ]
 
 let policy_from_k_tree pr tree topo (path_tag : int) tag =  
   (* Printf.printf "[FaulTolerance.ml] policy_from_k_tree %s\n%!" (tagged_k_tree_to_string tree); *)
@@ -192,14 +195,14 @@ let policy_from_k_tree pr tree topo (path_tag : int) tag =
     | KRoot_t(G.Host h, KTree_t(G.Switch sw, children)) -> 
       let sw' = G.Switch sw in
       let _,inport = G.get_ports topo (G.Host h) sw' in
-      let children_ports = List.map (next_port_from_k_tree_root sw' topo path_tag) children in
-      let backup = LPar(And( Switch sw, And( InPort inport, pr)), 
+      let children_ports = List.map (next_port_from_k_tree_root sw' topo (Some path_tag)) children in
+      let backup = lpar(And( OnSwitch sw, And (pr, Hdr {all with ptrnInPort = WildcardExact (Physical (Int32.to_int inport))})), 
 			children_ports) in
       let next_hops = List.map (next_hop_from_k_tree (G.Switch sw) topo) children in
       let children_pols = List.fold_left 
 	(fun a (sw'', inport,treeTag) -> 
-	  Par(a, policy_from_k_tree' inport (snd treeTag) topo path_tag (fst treeTag))) trivial_pol next_hops in
-      Par(backup, children_pols)
+	  Union(a, policy_from_k_tree' (Physical (Int32.to_int inport)) (snd treeTag) topo (Some path_tag) (fst treeTag))) trivial_pol next_hops in
+      Union(backup, children_pols)
 
 
 let rec compile_ft_regex pol vid topo = 
@@ -214,5 +217,5 @@ let rec compile_ft_to_nc regpol topo =
   let genSym = GenSym.create() in
   let pols = normalize regpol in
   List.fold_left (fun acc pol -> let vid = (GenSym.next_val genSym) in 
-				 Par(compile_ft_regex pol vid topo, acc))
+				 Union(compile_ft_regex pol vid topo, acc))
     trivial_pol pols
