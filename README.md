@@ -1,7 +1,11 @@
-FatTire: Fault Tolerating Regular Expressions
+Pathetic: Path Frenetic
 ================================
 
-FatTire is a language for specifying fault-tolerant network forwarding policies. For more details, see the paper: <http://www.cs.cornell.edu/~reitblatt/papers/fault-tolerance-hotsdn13.pdf>
+Pathetic is a language for SDN forwarding policies specified at the path-level. For example, a policy can require that all SSH traffic traverses a specific IDS box:
+
+```TcpDstPort = 22 => [*.IDS.*]```
+
+For more details, see the FatTire paper, which builds upon Pathetic: <http://www.cs.cornell.edu/~reitblatt/papers/fault-tolerance-hotsdn13.pdf>
 
 Building from Source
 ====================
