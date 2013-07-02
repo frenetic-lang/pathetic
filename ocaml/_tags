@@ -1,10 +1,4 @@
 true : use_menhir
-<Pathetic/Regex.cmx> : for-pack(Pathetic), package(netcore)
-<Pathetic/RegexUtils.cmx> : for-pack(Pathetic), package(netcore)
-<Pathetic/Regex.cmo> : for-pack(Pathetic), package(netcore)
-<Pathetic/RegexUtils.cmo> : for-pack(Pathetic), package(netcore)
-<Pathetic/*.cmo> : for-pack(Pathetic), package(netcore)
-<Pathetic.cmo> : package(netcore)
 <**/*.byte> : package(lwt), package(lwt.unix), package(cstruct)
 <**/*.d.byte> : package(lwt), package(lwt.unix), package(cstruct)
 <**/*.native> : package(lwt), package(lwt.unix), package(cstruct)

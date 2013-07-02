@@ -128,20 +128,20 @@ let rec to_dnf' pol = match pol with
   | RegInter (RegPol _, RegPol _) -> pol
   | RegInter (RegUnion(a,b), c) -> RegUnion(to_dnf' (RegInter(a,c)), to_dnf' (RegInter(b,c)))
   | RegInter (c,RegUnion(a,b)) -> RegUnion(to_dnf' (RegInter(a,c)), to_dnf' (RegInter(b,c)))
-  | RegInter (RegInter (pol1,pol2), RegPol(pr,re,k) ) -> 
-    let pol3 = RegPol(pr,re,k) in
+  | RegInter (RegInter (pol1,pol2), RegPol(pr,re) ) -> 
+    let pol3 = RegPol(pr,re) in
     RegInter (to_dnf' (RegInter(pol1, pol3)), 
 	      to_dnf' (RegInter(pol2, pol3)))
-  | RegInter (RegPol(pr,re,k), RegInter (pol1,pol2)) -> 
-    let pol3 = RegPol(pr,re,k) in
+  | RegInter (RegPol(pr,re), RegInter (pol1,pol2)) -> 
+    let pol3 = RegPol(pr,re) in
     RegInter (to_dnf' (RegInter(pol1, pol3)), 
 	      to_dnf' (RegInter(pol2, pol3)))
   | RegInter (a,b) -> RegInter(to_dnf' a, to_dnf' b)
   | RegUnion (RegPol _, RegPol _) -> pol
-  | RegUnion (RegUnion(a,b), RegPol (pr,re,k)) -> RegUnion( to_dnf' (RegUnion (a, (RegPol (pr, re, k)))),
-							    to_dnf' (RegUnion (b, (RegPol (pr, re, k)))))
-  | RegUnion (RegPol (pr,re,k), RegUnion(a,b)) -> RegUnion( to_dnf' (RegUnion (a, (RegPol (pr, re, k)))),
-							    to_dnf' (RegUnion (b, (RegPol (pr, re, k)))))
+  | RegUnion (RegUnion(a,b), RegPol (pr,re)) -> RegUnion( to_dnf' (RegUnion (a, (RegPol (pr, re)))),
+							    to_dnf' (RegUnion (b, (RegPol (pr, re)))))
+  | RegUnion (RegPol (pr,re), RegUnion(a,b)) -> RegUnion( to_dnf' (RegUnion (a, (RegPol (pr, re)))),
+							    to_dnf' (RegUnion (b, (RegPol (pr, re)))))
   | RegUnion (a, b) -> RegUnion( to_dnf' a, to_dnf' b)
   | RegPol _ -> pol
 
@@ -153,7 +153,7 @@ let rec to_dnf pol =
 let rec to_dnf_list pol = match pol with
   | RegUnion(a,b) -> to_dnf_list a @ to_dnf_list b
   | RegInter(a,b) -> [List.concat (to_dnf_list a @ to_dnf_list b) ]
-  | RegPol(pr,re,k) -> [[(pr,re,k)]]
+  | RegPol(pr,re) -> [[(pr,re)]]
 
 let rec dnf_form_pred pred = match pred with
   | And(Or _, _) -> false
@@ -194,7 +194,7 @@ let rec to_dnf_pred_list pred : pred list list = match pred with
   | And(a,b) -> [List.concat (to_dnf_pred_list a @ to_dnf_pred_list b)]
   | _ -> [[pred]]
 
-let trivial_pol = RegPol(Nothing, Star, 0)
+let trivial_pol = RegPol(Nothing, Star)
 
 let rec product lst1 lst2 = match lst1 with
   | [] -> []
@@ -256,34 +256,34 @@ let rec preds_equiv pr1 pr2 =
   pr1 = pr2
 
 let rec blast_inter_list pol = 
-  List.map (fun (a,b,c) -> RegPol(a,b,c)) 
+  List.map (fun (a,b) -> RegPol(a,b)) 
     (List.map
-       (fun pol -> (List.fold_left (fun (pr_a, re_a, k_a) (pr,re,k) ->
+       (fun pol -> (List.fold_left (fun (pr_a, re_a) (pr,re) ->
 	 let pr1' = to_dnf_pred_list pr_a in
 	 let pr2' = to_dnf_pred_list pr in
 	 if preds_overlap pr1' pr2' 
 	 then
-	   (to_dnf_pred (And(pr_a, pr)), re_a && re, max k_a k)
-	 else (Nothing, Star, 0)) (Everything, Star, 0) pol)) pol)
+	   (to_dnf_pred (And(pr_a, pr)), re_a && re)
+	 else (Nothing, Star)) (Everything, Star) pol)) pol)
 
 (* Takes in a DNF policy and eliminates all intersections, returning a union of atomic policies *)
 let rec blast_inter pol = match pol with
-  | RegInter(RegPol(pr1,re1,k1), RegPol(pr2,re2,k2)) ->
+  | RegInter(RegPol(pr1,re1), RegPol(pr2,re2)) ->
     let pr1' = to_dnf_pred_list pr1 in
     let pr2' = to_dnf_pred_list pr2 in
     if preds_overlap pr1' pr2' 
     then
-      RegPol(And(pr1,pr2), re1 && re2, max k1 k2)
+      RegPol(And(pr1,pr2), re1 && re2)
     else trivial_pol
   | RegInter(a, b) -> 
     (* We know this will return an atomic pol b/c pol is DNF *)
-    let RegPol(pr1, re1, k1) = blast_inter a in
-    let RegPol(pr2, re2, k2) = blast_inter b in
+    let RegPol(pr1, re1) = blast_inter a in
+    let RegPol(pr2, re2) = blast_inter b in
     let pr1' = to_dnf_pred_list pr1 in
     let pr2' = to_dnf_pred_list pr2 in
     if preds_overlap pr1' pr2' 
     then
-      RegPol(And(pr1,pr2), re1 && re2, max k1 k2)
+      RegPol(And(pr1,pr2), re1 && re2)
     else trivial_pol
   | RegUnion(a, b) -> RegUnion(blast_inter a, blast_inter b)
   | RegPol _ -> pol
@@ -291,7 +291,7 @@ let rec blast_inter pol = match pol with
 (* Takes in two atomic policies and returns a list of equivalent (when
    unioned) disjoint policies *)
 let rec blast_union1 pol1 pol2 = match pol1,pol2 with
-  | RegPol(pr1,re1,k1), RegPol(pr2,re2,k2) ->
+  | RegPol(pr1,re1), RegPol(pr2,re2) ->
     let pr1' = to_dnf_pred_list pr1 in
     let pr2' = to_dnf_pred_list pr2 in
     (match is_empty pr1', is_empty pr2' with
@@ -300,28 +300,28 @@ let rec blast_union1 pol1 pol2 = match pol1,pol2 with
       | false, true -> [pol1]
       | _ ->
 	if preds_equiv pr1 pr2 then
-	  [RegPol(pr1, re1 && re2, max k1 k2)]
+	  [RegPol(pr1, re1 && re2)]
 	else
 	  if preds_overlap pr1' pr2' then
-	    [RegPol(And (pr1, Not pr2), re1, k1);
-	     RegPol(And (pr2, Not pr1), re2, k2);
-	     RegPol(And (pr1, pr2), re1 && re2, max k1 k2)]
+	    [RegPol(And (pr1, Not pr2), re1);
+	     RegPol(And (pr2, Not pr1), re2);
+	     RegPol(And (pr1, pr2), re1 && re2)]
 	  else
-	    [RegPol(pr1,re1,k1); 
-	     RegPol(pr2,re2,k2)])
+	    [RegPol(pr1,re1); 
+	     RegPol(pr2,re2)])
   | _ -> failwith "blast_union1 takes atomic policies only"
 
 (* Takes a list of atomic policies and an atomic policy 'pol' and
    removes all policies equivalent to 'pol' *)
 let rec remove_dups' lst pol = match lst with
   | [] -> ([], pol)
-  | RegPol(pr',re',k') :: lst -> 
-    let RegPol(pr,re,k) = pol in
+  | RegPol(pr',re') :: lst -> 
+    let RegPol(pr,re) = pol in
     if preds_equiv pr' pr then
-      remove_dups' lst (RegPol(pr, re && re', max k k'))
+      remove_dups' lst (RegPol(pr, re && re'))
     else
       let (rst, pol') = remove_dups' lst pol in
-      (RegPol(pr',re',k') :: rst, pol')
+      (RegPol(pr',re') :: rst, pol')
 
 let rec remove_dups pols = match pols with
   | [] -> []
@@ -384,13 +384,13 @@ let rec simpl_re re = match re with
 (* Simplifies each policy in a list of atomic policies *)
 let simpl_pol = 
   List.map (fun pol ->
-    let RegPol(pr,re,k) = pol in
-    RegPol(simpl_pred pr, simpl_re re, k))
+    let RegPol(pr,re) = pol in
+    RegPol(simpl_pred pr, simpl_re re))
 
 (* Removes trivial policies (empty pred/re) from a list of atomic policies *)
 let remove_trivial = 
   List.fold_left (fun acc p -> 
-    let RegPol(pr,re,k) = p in
+    let RegPol(pr,re) = p in
     if pr = Nothing or re = EmptySet then acc else p :: acc) []
 
 (* Takes in a list of atomic policies *)
@@ -399,8 +399,8 @@ let simplify pols =
 
 (* atomic pols *)
 let pols_disjoint pol1 pol2 = 
-  let RegPol(pr1,_,_) = pol1 in
-  let RegPol(pr2,_,_) = pol2 in
+  let RegPol(pr1,_) = pol1 in
+  let RegPol(pr2,_) = pol2 in
   let pr1' = to_dnf_pred_list (to_dnf_pred pr1) in
   let pr2' = to_dnf_pred_list (to_dnf_pred pr2) in
   not (preds_overlap pr1' pr2')
@@ -422,5 +422,5 @@ let normalize pol =
   normalize' (blast_inter_list (to_dnf_list (to_dnf pol)))
 
 let rec compile_regex pol topo = match pol with
-  | RegPol (pred, reg, _) -> compile_path pred (expand_re reg topo) topo (Gensym.next ())
+  | RegPol (pred, reg) -> compile_path pred (expand_re reg topo) topo (Gensym.next ())
   | RegUnion (pol1, pol2) -> Union (compile_regex pol1 topo, compile_regex pol2 topo)

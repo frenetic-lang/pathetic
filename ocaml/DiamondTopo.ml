@@ -1,5 +1,4 @@
 open OpenFlow0x04_Platform
-open NetCoreFT
 
 module G = Graph.Graph
 

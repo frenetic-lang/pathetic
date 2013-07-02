@@ -17,7 +17,7 @@ type regex =
   | EmptySet
 
 type regex_policy = 
-  | RegPol of pred * regex * int
+  | RegPol of pred * regex
   | RegUnion of regex_policy * regex_policy
   | RegInter of regex_policy * regex_policy
 
@@ -39,7 +39,7 @@ let rec regex_to_string reg = match reg with
   | Intersection(reg1, reg2) -> Printf.sprintf "( %s <&&> %s )" (regex_to_string reg1) (regex_to_string reg2)
 
 let rec regexPol_to_string regPol = match regPol with
-  | RegPol(pr, reg, k) -> Printf.sprintf "RegPol(%s, %s, %d)" (string_of_pred pr) (regex_to_string reg) k
+  | RegPol(pr, reg) -> Printf.sprintf "RegPol(%s, %s)" (string_of_pred pr) (regex_to_string reg)
   | RegUnion(reg_pol1, reg_pol2) -> Printf.sprintf "(%s <+> %s)" (regexPol_to_string reg_pol1) (regexPol_to_string reg_pol2)
   | RegInter(reg_pol1, reg_pol2) -> Printf.sprintf "(%s <*> %s)" (regexPol_to_string reg_pol1) (regexPol_to_string reg_pol2)
 

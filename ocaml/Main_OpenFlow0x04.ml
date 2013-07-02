@@ -3,8 +3,8 @@ open Printf
 open OpenFlow0x01_PlatformSig
 open Unix
 (* open OpenFlow0x04_Core *)
-(* module Test = RegexTest *)
-module Test = RegexFTTest
+module Test = RegexTest
+(* module Test = RegexFTTest *)
 
 (* module Controller = RegexTest.Make (OpenFlowPlatform) *)
 module Controller = Test.Make (OpenFlow0x01_Platform)

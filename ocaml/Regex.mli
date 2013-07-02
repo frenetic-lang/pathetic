@@ -11,7 +11,7 @@ type regex =
   | EmptySet
 
 type regex_policy =
-    RegPol of NetCore_Types.pred * regex * int
+    RegPol of NetCore_Types.pred * regex
   | RegUnion of regex_policy * regex_policy
   | RegInter of regex_policy * regex_policy
 
