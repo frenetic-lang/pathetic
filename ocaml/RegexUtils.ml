@@ -74,14 +74,14 @@ let shortest_path_re re src topo =
   (try List.rev (bfs' (G.copy topo) q) 
    with Queue.Empty -> raise G.(NoPath("unknown", "unknown")))
  
-let rec compile_path1 pred path topo port = match path with
+let rec compile_path1 pred path topo port vid = match path with
   | G.Switch s1 :: G.Switch s2 :: path -> 
     let p1,p2 = G.get_ports topo (G.Switch s1) (G.Switch s2) in
-    Union ((oldPol ((And (pred, (And (Hdr {all with ptrnInPort = WildcardExact (Physical (Int32.to_int port))},OnSwitch s1)))), [SwitchAction {id with outPort = Physical (Int32.to_int p1)}])), ((compile_path1 pred ((G.Switch s2) :: path) topo p2)))
+    Union ((oldPol ((And (pred, (And (Hdr {all with ptrnInPort = WildcardExact (Physical (Int32.to_int port))},OnSwitch s1)))), [SwitchAction {id with outPort = Physical (Int32.to_int p1)}])), ((compile_path1 pred ((G.Switch s2) :: path) topo p2 vid)))
   | G.Switch s1 :: [G.Host h] -> 
     let p1,_ = G.get_ports topo (G.Switch s1) (G.Host h) in
     oldPol ((And (pred, (And (Hdr {all with ptrnInPort = WildcardExact (Physical (Int32.to_int port))}, OnSwitch s1)))), 
-	 [SwitchAction {id with outPort = Physical (Int32.to_int p1); outDlVlan = Some (None, None)}])
+	 [SwitchAction {id with outPort = Physical (Int32.to_int p1); outDlVlan = Some (Some vid, None)}])
   | _ -> oldPol (pred, [])
 
 let print_list printer lst = 
@@ -97,7 +97,7 @@ let compile_path pred path topo vid  = match path with
     let p1,p2 = G.get_ports topo (G.Switch s1) (G.Switch s2) in
     let pol = oldPol (And (pred, (And (oldInPort inport, OnSwitch s1))), 
 		   [SwitchAction {id with outDlVlan=Some (None, Some vid); outPort = Physical (Int32.to_int p1)}]) in
-    Union (pol, compile_path1 (And (Hdr {all with ptrnDlVlan = WildcardExact (Some vid); ptrnDlVlanPcp = WildcardExact 0}, pred)) (G.Switch s2 :: path) topo p2)
+    Union (pol, compile_path1 (And (Hdr {all with ptrnDlVlan = WildcardExact (Some vid); ptrnDlVlanPcp = WildcardExact 0}, pred)) (G.Switch s2 :: path) topo p2 vid)
   | [] -> oldPol(pred,[])
   | _ -> failwith (Printf.sprintf "Trying to compile path %s which does not start with a host followed by a switch" (print_list G.node_to_string path))
 

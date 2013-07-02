@@ -23,7 +23,7 @@ module Routing = struct
       RegPol (Everything, (Const h2 <.> Star <.> Const h1))
 
   let () = let pol = (compile_regex test_regex (DiamondTopo.make_topo ())) in
-	   Printf.printf "%s\n" (string_of_pol pol);
+	   Printf.printf "%s\n%!" (string_of_pol pol);
 	   push (Some pol)
 end
 
